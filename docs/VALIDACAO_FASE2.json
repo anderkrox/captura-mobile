@@ -1,0 +1,170 @@
+{
+  "completed_at": "2026-10-01T14:32:44-03:00",
+  "timezone": "America/Sao_Paulo",
+  "base_commit": "3e03f84c7b0fb8b405e21bcd63d66a78847d9fe7",
+  "source_state": "working_tree_including_phase2_implementation_and_tests",
+  "status": "passed",
+  "configurations": {
+    "Release": {
+      "ctest_tests": 6,
+      "ctest_failures": 0,
+      "unit_cases": 151,
+      "unit_breakdown": {
+        "capture_core": 50,
+        "calibration": 87,
+        "ffmpeg_setup": 14
+      },
+      "e2e_scenarios": 3,
+      "phase1_scenario_groups": 9,
+      "phase2_scenario_groups": 19,
+      "total_test_seconds": 39.933,
+      "tests": [
+        {
+          "name": "unit.capture_core",
+          "seconds": 0.068,
+          "status": "passed"
+        },
+        {
+          "name": "unit.calibration",
+          "seconds": 0.673,
+          "status": "passed"
+        },
+        {
+          "name": "unit.ffmpeg_setup",
+          "seconds": 8.07,
+          "status": "passed"
+        },
+        {
+          "name": "e2e.phase0",
+          "seconds": 4.352,
+          "status": "passed"
+        },
+        {
+          "name": "e2e.phase1",
+          "seconds": 20.007,
+          "status": "passed"
+        },
+        {
+          "name": "e2e.phase2",
+          "seconds": 6.763,
+          "status": "passed"
+        }
+      ],
+      "encoder": "libx264",
+      "phase2_cases": [
+        "startup_pm_v2_and_unavailable_calibration",
+        "window_selector_and_native_preview_four_corners",
+        "explicit_physical_crop_and_preview",
+        "invalid_ratio_bounds_overflow_and_empty_edits_rejected",
+        "fine_position_size_and_reference_controls",
+        "scaled_preview_drag_and_letterbox_exclusion",
+        "source_movement_preserves_physical_crop_and_pixels",
+        "unicode_settings_identity_crop_dpi_without_hwnd",
+        "restart_rechecks_and_restores_saved_source",
+        "resize_invalidates_until_explicit_recalibration",
+        "shrink_rejects_reference_and_accepts_smaller_mobile_crop",
+        "minimized_source_blocks_save_and_restores",
+        "source_close_and_stale_selection_fail_without_crash",
+        "missing_saved_source_requires_selection",
+        "new_source_process_restores_by_identity",
+        "ambiguous_saved_identity_does_not_auto_select",
+        "saved_dpi_mismatch_requires_recalibration",
+        "saved_frame_mismatch_requires_recalibration",
+        "corrupt_settings_and_write_failure_are_controlled"
+      ],
+      "dpi_coverage": "real PMv2 awareness and saved/current DPI mismatch; no physical monitor scale change",
+      "artifacts": "build/vs2022-x64/test-results/Release"
+    },
+    "Debug": {
+      "ctest_tests": 6,
+      "ctest_failures": 0,
+      "unit_cases": 151,
+      "unit_breakdown": {
+        "capture_core": 50,
+        "calibration": 87,
+        "ffmpeg_setup": 14
+      },
+      "e2e_scenarios": 3,
+      "phase1_scenario_groups": 9,
+      "phase2_scenario_groups": 19,
+      "total_test_seconds": 36.588,
+      "tests": [
+        {
+          "name": "unit.capture_core",
+          "seconds": 0.069,
+          "status": "passed"
+        },
+        {
+          "name": "unit.calibration",
+          "seconds": 0.802,
+          "status": "passed"
+        },
+        {
+          "name": "unit.ffmpeg_setup",
+          "seconds": 5.043,
+          "status": "passed"
+        },
+        {
+          "name": "e2e.phase0",
+          "seconds": 3.34,
+          "status": "passed"
+        },
+        {
+          "name": "e2e.phase1",
+          "seconds": 20.594,
+          "status": "passed"
+        },
+        {
+          "name": "e2e.phase2",
+          "seconds": 6.741,
+          "status": "passed"
+        }
+      ],
+      "encoder": "libx264",
+      "phase2_cases": [
+        "startup_pm_v2_and_unavailable_calibration",
+        "window_selector_and_native_preview_four_corners",
+        "explicit_physical_crop_and_preview",
+        "invalid_ratio_bounds_overflow_and_empty_edits_rejected",
+        "fine_position_size_and_reference_controls",
+        "scaled_preview_drag_and_letterbox_exclusion",
+        "source_movement_preserves_physical_crop_and_pixels",
+        "unicode_settings_identity_crop_dpi_without_hwnd",
+        "restart_rechecks_and_restores_saved_source",
+        "resize_invalidates_until_explicit_recalibration",
+        "shrink_rejects_reference_and_accepts_smaller_mobile_crop",
+        "minimized_source_blocks_save_and_restores",
+        "source_close_and_stale_selection_fail_without_crash",
+        "missing_saved_source_requires_selection",
+        "new_source_process_restores_by_identity",
+        "ambiguous_saved_identity_does_not_auto_select",
+        "saved_dpi_mismatch_requires_recalibration",
+        "saved_frame_mismatch_requires_recalibration",
+        "corrupt_settings_and_write_failure_are_controlled"
+      ],
+      "dpi_coverage": "real PMv2 awareness and saved/current DPI mismatch; no physical monitor scale change",
+      "artifacts": "build/vs2022-x64/test-results/Debug"
+    }
+  },
+  "limitations": [
+    "E2E uses a real controlled Win32 source and Windows.Graphics.Capture, without Edge or game state dependencies.",
+    "DPI coverage checks real PER_MONITOR_AWARE_V2 and saved/current DPI mismatch; physical monitor scale changes remain in phase 5."
+  ],
+  "source_sha256_lf": {
+    "CMakeLists.txt": "4508781a03bed7025bf808b6194e8d47a61c15f8ebf195a38d619d83574dec62",
+    "src/calibration.cpp": "957d904e25370068b7dc95f178988dc2b9b9b5d12139f81534b9ded9d81ede54",
+    "src/calibration.h": "090643c8f53d367b96ec461fb4477747e4a8fcf62c620e4c4e4f2b1386ea5111",
+    "src/capture_core.cpp": "c1b1d556f5bd72cc023fd483f495328b9ff3e3cc1231b0578cb4fe127a64ee47",
+    "src/capture_core.h": "a30df101b655585cd21b263d922cc0d64cb6b5ca12cb9470a8b430d4332ee428",
+    "src/capture_preview.cpp": "01e89d6cd4206fd124e75cca8079c8b707fd7866169e86791248b5abbb427cd4",
+    "src/capture_preview.h": "b8129e6e0eda84d28904b97e4a2d5a70ac619427412b64e42a6ad3b42e346202",
+    "src/main.cpp": "46cf4c1a6dcaec59dc54851a1c83cbe7cab402203a1a0fc143a2dd606ce05bed",
+    "src/phase1_poc.cpp": "cb9978396c31abcebb358e03c09da26dd4bfd3b35a71a92622e2bf6dbee29c5e",
+    "tests/calibration_tests.cpp": "f90db3eaad1aaf0ce7121a99848de8317624976aff67bc212364ac920061249f",
+    "tests/capture_core_tests.cpp": "d119ec73ba47b20341427fe6dde2c94de15db0c7ffc2c79f512d34cda2aceb58",
+    "tests/capture_fixture.cpp": "a7e289dc1aae1e5d39d16f1aa205434d99dcdde75391c4579f441ae3888da0bb",
+    "tests/e2e_phase0.py": "bdf9e9b9bca7e863f6eb0a046fc321e557616fe1a12474c6719710cfe96b0d36",
+    "tests/e2e_phase1.py": "22f211e5b24db5a97b78c789f81e53601ab9b114d20794476a4c49a6986d7230",
+    "tests/e2e_phase2.py": "5b7cbf30f85ea30c7d72a10649815fa9c57bd69b202aa00b6484c8352dbcb815"
+  }
+}

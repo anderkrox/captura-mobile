@@ -1,7 +1,7 @@
 # Plano de desenvolvimento — Captura Mobile do Yourots
 
 Data: 1 de outubro de 2026.
-Status: implementação iniciada; Fase 1 validada tecnicamente em 01/10/2026.
+Status: implementação iniciada; Fases 1 e 2 validadas tecnicamente em 01/10/2026.
 
 ## 1. Objetivo
 
@@ -206,14 +206,44 @@ testes permaneceu em execução após a suíte.
 
 **Objetivo:** tornar o enquadramento repetível e visível para o usuário.
 
-- [ ] Criar seletor de janela e prévia da captura.
-- [ ] Criar seleção de região com proporção travada em 9:16 e ajuste fino.
-- [ ] Mapear coordenadas da prévia para coordenadas físicas da textura capturada.
-- [ ] Declarar suporte a DPI por monitor e tratar mudanças de escala.
-- [ ] Validar posição e tamanho do retângulo em relação ao quadro disponível.
-- [ ] Salvar a calibração em relação à janela, sem reutilizar cegamente identificadores de janela entre execuções.
-- [ ] Conferir novamente a fonte e a calibração ao abrir o aplicativo.
-- [ ] Solicitar recalibração quando alterações detectáveis invalidarem o recorte.
+- [x] Criar seletor de janela e prévia da captura.
+- [x] Criar seleção de região com proporção travada em 9:16 e ajuste fino.
+- [x] Mapear coordenadas da prévia para coordenadas físicas da textura capturada.
+- [x] Declarar suporte a DPI por monitor e tratar mudanças de escala.
+- [x] Validar posição e tamanho do retângulo em relação ao quadro disponível.
+- [x] Salvar a calibração em relação à janela, sem reutilizar cegamente identificadores de janela entre execuções.
+- [x] Conferir novamente a fonte e a calibração ao abrir o aplicativo.
+- [x] Solicitar recalibração quando alterações detectáveis invalidarem o recorte.
+
+**Implementação em 01/10/2026:** o aplicativo principal passou a enumerar janelas capturáveis, iniciar `Windows.Graphics.Capture` na fonte selecionada e exibir a textura completa em uma prévia Win32. A seleção do Mobile pode ser feita por arraste diretamente sobre a prévia com proporção 9:16 travada, por edição explícita de X/Y/largura/altura ou por ajustes finos de 1 px na posição e 9 × 16 px no tamanho. Há também um atalho para criar o recorte de referência de 486 × 864 centralizado no quadro atual.
+
+As coordenadas da prévia são convertidas para pixels físicos da textura capturada antes de formar o recorte. O processo declara `DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2`, acompanha o DPI da janela fonte com `GetDpiForWindow` e associa cada calibração ao tamanho físico do quadro e ao DPI observados. Mudanças detectadas de tamanho, DPI, proporção ou limites invalidam a calibração e a interface solicita uma nova seleção antes que ela volte ao estado válido.
+
+A persistência usa `%LOCALAPPDATA%\YourotsCapture\settings.ini` e grava identidade descritiva da fonte (`process`, classe e título), dimensões físicas, DPI e recorte. Nenhum `HWND` é persistido. Ao abrir o aplicativo, uma calibração só é reaplicada automaticamente quando uma janela visível corresponde à identidade salva; depois disso o primeiro quadro e o DPI atuais ainda são comparados com a base persistida. A movimentação simples da janela, sem alteração de tamanho ou DPI, não muda as coordenadas do recorte.
+
+**Validação automatizada em 01/10/2026:** a Fase 2 recebeu 87 testes unitários
+do módulo de calibração e um E2E com 19 grupos que operam a interface Win32 e
+a captura nativa reais. Os testes cobrem geometria da prévia, arraste 9:16,
+ajustes finos, validação de limites/tamanho/DPI, persistência Unicode sem
+`HWND`, restauração por identidade, movimento, crescimento e redução da
+fonte, minimização, fechamento, identidade ambígua e falhas de escrita.
+As configurações dos testes ficam em um `LOCALAPPDATA` isolado.
+
+A validação levou a corrigir overflow e truncamento de entradas numéricas,
+preservar títulos Unicode, substituir o INI por arquivo temporário e impedir
+a restauração automática de fontes ambíguas. O salvamento é bloqueado com
+fonte minimizada, fechada ou captura com erro. Após uma mudança detectada de
+tamanho ou DPI, a calibração exige confirmação explícita mesmo se a fonte
+voltar à base anterior. A captura usa MTA e copia somente os pixels válidos
+da textura para permitir recriar os buffers após redimensionamentos.
+
+A suíte completa passou em Release e Debug x64: seis entradas CTest por
+configuração, 151 casos unitários e os E2E das Fases 0, 1 e 2, sem falhas.
+O E2E da Fase 2 confere os quatro cantos da prévia por pixels e o contexto DPI
+por monitor. O caso de divergência de DPI compara a base persistida com o DPI
+real; a mudança física de escala dos monitores continua prevista na Fase 5.
+Comandos e cobertura: [tests/README.md](tests/README.md). Resumo versionado:
+[docs/VALIDACAO_FASE2.json](docs/VALIDACAO_FASE2.json).
 
 **Entrega:** prévia funcional com seleção persistente.
 

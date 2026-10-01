@@ -6,6 +6,8 @@ import argparse
 import ctypes
 from ctypes import wintypes
 import json
+import os
+import tempfile
 from pathlib import Path
 import struct
 import subprocess
@@ -56,49 +58,51 @@ def test_application(app: Path) -> list[dict]:
     user32.PostMessageW.argtypes = (wintypes.HWND, wintypes.UINT, wintypes.WPARAM, wintypes.LPARAM)
     user32.PostMessageW.restype = wintypes.BOOL
 
-    results = []
-    for cycle in range(2):
-        startup = subprocess.STARTUPINFO()
-        startup.dwFlags = subprocess.STARTF_USESHOWWINDOW
-        startup.wShowWindow = subprocess.SW_HIDE
-        process = subprocess.Popen([str(app)], startupinfo=startup, cwd=app.parent)
-        try:
-            windows = []
+    with tempfile.TemporaryDirectory(prefix='yourots-phase0-') as local_app_data:
+        environment = {**os.environ, 'LOCALAPPDATA': local_app_data}
+        results = []
+        for cycle in range(2):
+            startup = subprocess.STARTUPINFO()
+            startup.dwFlags = subprocess.STARTF_USESHOWWINDOW
+            startup.wShowWindow = subprocess.SW_HIDE
+            process = subprocess.Popen([str(app)], startupinfo=startup, cwd=app.parent, env=environment)
+            try:
+                windows = []
 
-            @enum_callback
-            def collect(hwnd, _):
-                pid = wintypes.DWORD()
-                user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
-                if pid.value == process.pid:
-                    name = ctypes.create_unicode_buffer(128)
-                    user32.GetClassNameW(hwnd, name, len(name))
-                    if name.value == 'YourotsCaptureWindow':
-                        windows.append(hwnd)
-                return True
+                @enum_callback
+                def collect(hwnd, _):
+                    pid = wintypes.DWORD()
+                    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+                    if pid.value == process.pid:
+                        name = ctypes.create_unicode_buffer(128)
+                        user32.GetClassNameW(hwnd, name, len(name))
+                        if name.value == 'YourotsCaptureWindow':
+                            windows.append(hwnd)
+                    return True
 
-            deadline = time.monotonic() + 8
-            while not windows and time.monotonic() < deadline:
-                require(process.poll() is None, 'Aplicativo encerrou antes de criar a janela.')
-                require(bool(user32.EnumWindows(collect, 0)), 'EnumWindows falhou.')
-                if not windows:
-                    time.sleep(0.05)
+                deadline = time.monotonic() + 8
+                while not windows and time.monotonic() < deadline:
+                    require(process.poll() is None, 'Aplicativo encerrou antes de criar a janela.')
+                    require(bool(user32.EnumWindows(collect, 0)), 'EnumWindows falhou.')
+                    if not windows:
+                        time.sleep(0.05)
 
-            require(len(windows) == 1, 'A janela principal nao foi criada de forma unica.')
-            title = ctypes.create_unicode_buffer(128)
-            user32.GetWindowTextW(windows[0], title, len(title))
-            require(title.value == 'Yourots Capture', f'Titulo inesperado: {title.value}')
-            response = ctypes.c_size_t()
-            require(
-                bool(user32.SendMessageTimeoutW(windows[0], 0, 0, 0, 2, 2000, ctypes.byref(response))),
-                'A thread da interface nao respondeu a WM_NULL.',
-            )
-            require(bool(user32.PostMessageW(windows[0], 0x0010, 0, 0)), 'Envio de WM_CLOSE falhou.')
-            require(process.wait(timeout=5) == 0, 'Fechamento normal terminou com erro.')
-            results.append({'cycle': cycle + 1, 'title': title.value, 'exit_code': process.returncode})
-        finally:
-            if process.poll() is None:
-                process.kill()
-                process.wait(timeout=5)
+                require(len(windows) == 1, 'A janela principal nao foi criada de forma unica.')
+                title = ctypes.create_unicode_buffer(128)
+                user32.GetWindowTextW(windows[0], title, len(title))
+                require(title.value == 'Yourots Capture - Calibracao', f'Titulo inesperado: {title.value}')
+                response = ctypes.c_size_t()
+                require(
+                    bool(user32.SendMessageTimeoutW(windows[0], 0, 0, 0, 2, 2000, ctypes.byref(response))),
+                    'A thread da interface nao respondeu a WM_NULL.',
+                )
+                require(bool(user32.PostMessageW(windows[0], 0x0010, 0, 0)), 'Envio de WM_CLOSE falhou.')
+                require(process.wait(timeout=5) == 0, 'Fechamento normal terminou com erro.')
+                results.append({'cycle': cycle + 1, 'title': title.value, 'exit_code': process.returncode})
+            finally:
+                if process.poll() is None:
+                    process.kill()
+                    process.wait(timeout=5)
     return results
 
 

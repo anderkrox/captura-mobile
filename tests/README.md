@@ -1,4 +1,4 @@
-# Testes das Fases 0 e 1
+# Testes das Fases 0, 1 e 2
 
 Os testes usam CTest, Python 3.10 ou superior e Pester 3.4.0, disponível neste
 computador pelo Windows PowerShell. Não é necessário baixar bibliotecas de
@@ -10,6 +10,14 @@ Na raiz do projeto:
 cmake --preset vs2022-x64 -DBUILD_TESTING=ON
 cmake --build --preset release
 ctest --preset release
+```
+
+Para salvar também o relatório consolidado do CTest, use um caminho absoluto
+(o CTest executa a partir da pasta de build):
+
+```powershell
+ctest --preset release --output-junit "$PWD/build/vs2022-x64/test-results/Release/ctest.xml"
+ctest --preset debug --output-junit "$PWD/build/vs2022-x64/test-results/Debug/ctest.xml"
 ```
 
 Para executar apenas uma categoria:
@@ -37,6 +45,23 @@ aplicativo sem as dependências de teste, configure com
 
 O executável `CaptureCoreTests` não usa GPU, navegador nem FFmpeg. O relatório
 JUnit XML fica em `capture-core.xml`.
+
+`calibration_tests.cpp` contém 87 casos sobre o módulo `Calibration`, usado
+pela interface da Fase 2:
+
+- Parsing estrito de inteiros, incluindo sinais, espaços, sufixos e overflow.
+- Validação de proporção 9:16, limites físicos, tamanho do quadro e DPI.
+- Correspondência da identidade da fonte, sem depender de `HWND`.
+- Ajuste da imagem à prévia, letterbox, bordas exclusivas e coordenadas negativas.
+- Conversão entre pixels da prévia e da textura, projeção do recorte e arraste
+  nos quatro sentidos, incluindo limites e ponteiros extremos.
+- Persistência Unicode, aspas, espaços, títulos longos, campos ausentes,
+  valores corrompidos e dimensões inválidas.
+- Substituição do INI, preservação do arquivo anterior em entradas inválidas
+  e remoção do temporário quando a escrita falha.
+
+O executável `CalibrationTests` usa uma pasta temporária própria e não usa
+GPU, navegador nem FFmpeg. O relatório JUnit fica em `calibration.xml`.
 
 `setup-ffmpeg.Tests.ps1` contém 14 casos sobre funções usadas pelo instalador:
 
@@ -101,21 +126,69 @@ repetir as verificações de pixels. A captura real do Edge e o vídeo de
 30 segundos continuam documentados em [PHASE1_POC.md](../docs/PHASE1_POC.md).
 Os E2E são serializados pelo CTest para não disputar a área de trabalho.
 
+## E2E da Fase 2
+
+`e2e_phase2.py` opera os controles reais de `YourotsCapture` por mensagens
+Win32 e captura `CaptureFixture` por Windows.Graphics.Capture / Direct3D 11.
+O teste salva screenshots BMP da interface e compara os quatro cantos
+coloridos da prévia, antes e depois de mover a fonte e restaurar a calibração.
+
+São 19 grupos de cenários: inicialização e DPI por monitor; seleção e prévia;
+recorte físico explícito; entradas inválidas; ajustes de posição/tamanho;
+arraste e letterbox; movimento da fonte; persistência Unicode sem `HWND`;
+restauração; redimensionamento com confirmação obrigatória; redução do quadro
+e recorte menor; minimização/restauração; fechamento e seleção expirada;
+fonte ausente; nova instância da fonte; identidade ambígua; divergência de DPI;
+divergência de tamanho persistido; INI corrompido e falha real de escrita.
+
+O `LOCALAPPDATA` dos E2E das Fases 0 e 2 aponta para pastas temporárias
+isoladas. As preferências pessoais do usuário não são lidas nem alteradas.
+Todos os processos criados pelo E2E são encerrados, inclusive em falhas.
+
+O E2E verifica o contexto DPI `PER_MONITOR_AWARE_V2` real e compara uma
+calibração com DPI salvo diferente do DPI real da fonte. Não modifica a escala
+dos monitores. A passagem física entre escalas de 100%, 125% e 150% e as
+mudanças internas de zoom/layout do DevTools continuam na Fase 5.
+
+O recebimento de quadros ocorre na thread interna do pool, conforme a
+[documentação de CreateFreeThreaded](https://learn.microsoft.com/en-us/uwp/api/windows.graphics.capture.direct3d11captureframepool.createfreethreaded).
+A inicialização WinRT do aplicativo usa MTA para permitir a recriação dos
+buffers nessa thread; o E2E verifica crescimento e redução reais da fonte.
+
 Os resultados ficam em `build/vs2022-x64/test-results/<configuração>/`:
 
 - `unit.xml`: relatório NUnit dos testes unitários.
 - `capture-core.xml`: 50 testes do núcleo de captura, em JUnit XML.
+- `calibration.xml`: 87 testes de calibração, em JUnit XML.
 - `e2e/report.json`: resultado do E2E, encoder escolhido e diagnóstico NVENC.
 - `e2e/ffprobe.json`: metadados do MP4.
 - `e2e/recording.mkv` e `e2e/recording.mp4`: vídeo sintético preservado para inspeção.
 - `e2e-phase1/report.json`: resultado dos nove cenários da captura nativa.
 - `e2e-phase1/*.log`: códigos de saída e diagnósticos de cada operação.
 - `e2e-phase1/*.png`, `*.mp4` e `*.ffprobe.json`: quadros, vídeos e metadados.
+- `e2e-phase2/report.json`: resultado dos 19 grupos da interface/calibração.
+- `e2e-phase2/preview-*.bmp`: screenshots da prévia real conferidos por pixels.
+- `ctest.xml`: resultado consolidado, quando usado `--output-junit`.
 
 Cada processo externo tem prazo de execução. Falhas retornam código diferente
 de zero e são reportadas pelo CTest; arquivos de vídeo úteis são preservados.
 
 ## Última execução
+
+Em 01/10/2026 às 14:32 (America/Sao_Paulo), builds Release e Debug x64
+aprovados. A suíte completa passou com 6/6 entradas CTest em cada
+configuração: 50 casos de captura, 87 de calibração, 14 de dependências
+(151 unitários) e os E2E das Fases 0, 1 e 2. Os 19 grupos da Fase 2 passaram
+nas duas configurações. Soma dos tempos dos testes: 39,933 s em Release e
+36,588 s em Debug. Nenhum processo de teste permaneceu em execução.
+
+O resumo versionado, incluindo os hashes dos fontes validados, está em
+[VALIDACAO_FASE2.json](../docs/VALIDACAO_FASE2.json). Os relatórios completos
+e screenshots estão nas pastas de artefatos indicadas acima. NVENC continua
+indisponível no driver atual; o fallback real `libx264` foi aprovado nos E2E
+de vídeo.
+
+## Histórico da Fase 1
 
 Em 01/10/2026, no Windows 10 do projeto, builds Debug e Release x64 aprovados.
 `ctest --preset release` e `ctest --preset debug` passaram com 4/4 entradas cada:

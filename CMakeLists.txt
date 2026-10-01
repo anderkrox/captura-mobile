@@ -28,7 +28,16 @@ target_compile_options(CaptureCore PRIVATE
 
 add_executable(YourotsCapture WIN32
     src/main.cpp
+    src/capture_preview.cpp
 )
+
+add_library(Calibration STATIC src/calibration.cpp)
+target_include_directories(Calibration PUBLIC src)
+target_compile_definitions(Calibration PUBLIC UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(Calibration PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive- /EHsc /utf-8>
+)
+target_link_libraries(Calibration PUBLIC CaptureCore)
 
 add_executable(YourotsCapturePoc
     src/phase1_poc.cpp
@@ -61,6 +70,8 @@ target_compile_options(YourotsCapturePoc PRIVATE
 )
 
 target_link_libraries(YourotsCapture PRIVATE
+    Calibration
+    gdi32
     d3d11
     dxgi
     windowsapp
@@ -101,6 +112,16 @@ if(BUILD_TESTING)
     )
     set_tests_properties(unit.capture_core PROPERTIES LABELS unit TIMEOUT 15)
 
+    add_executable(CalibrationTests tests/calibration_tests.cpp)
+    target_compile_options(CalibrationTests PRIVATE
+        $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive- /EHsc /utf-8>
+    )
+    target_link_libraries(CalibrationTests PRIVATE Calibration)
+    add_test(NAME unit.calibration
+        COMMAND CalibrationTests "${CMAKE_CURRENT_BINARY_DIR}/test-results/$<CONFIG>/calibration.xml"
+    )
+    set_tests_properties(unit.calibration PROPERTIES LABELS unit TIMEOUT 20)
+
     add_executable(CaptureFixture WIN32 tests/capture_fixture.cpp)
     target_compile_definitions(CaptureFixture PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
     target_compile_options(CaptureFixture PRIVATE
@@ -136,4 +157,12 @@ if(BUILD_TESTING)
             --artifacts "${CMAKE_CURRENT_BINARY_DIR}/test-results/$<CONFIG>/e2e-phase1"
     )
     set_tests_properties(e2e.phase1 PROPERTIES LABELS e2e TIMEOUT 180 RUN_SERIAL TRUE)
+
+    add_test(NAME e2e.phase2
+        COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/e2e_phase2.py"
+            --app "$<TARGET_FILE:YourotsCapture>"
+            --fixture "$<TARGET_FILE:CaptureFixture>"
+            --artifacts "${CMAKE_CURRENT_BINARY_DIR}/test-results/$<CONFIG>/e2e-phase2"
+    )
+    set_tests_properties(e2e.phase2 PROPERTIES LABELS e2e TIMEOUT 150 RUN_SERIAL TRUE)
 endif()

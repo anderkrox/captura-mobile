@@ -3,3 +3,4 @@
 /third_party/ffmpeg/bin/
 *.user
 *.suo
+/tests/__pycache__/
