@@ -122,3 +122,10 @@ Em 01/10/2026, no Windows 10 do projeto, builds Debug e Release x64 aprovados.
 50 casos de `unit.capture_core`, 14 de `unit.ffmpeg_setup` e os E2E das Fases 0
 e 1. O E2E da Fase 1 aprovou os nove grupos de cenários e o da Fase 0 confirmou
 o fallback real `libx264` quando NVENC não inicializou com o driver atual.
+
+Reexecução concluída em 01/10/2026 às 09:05 (America/Sao_Paulo), sobre o commit
+`abd074e`: 4/4 entradas CTest aprovadas novamente em cada configuração,
+64 casos unitários e dois E2E, sem falhas. Tempos: 27,922 s em Release e
+28,455 s em Debug. O resumo versionado está em
+[VALIDACAO_FASE1.json](../docs/VALIDACAO_FASE1.json); os relatórios completos
+incluem agora `ctest.xml` em cada pasta de configuração.

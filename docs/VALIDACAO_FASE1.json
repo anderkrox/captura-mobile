@@ -1,0 +1,86 @@
+{
+  "completed_at": "2026-10-01T09:05:09-03:00",
+  "timezone": "America/Sao_Paulo",
+  "source_commit": "abd074e8d6c55e41f92027f06958626f5fbba7bc",
+  "status": "passed",
+  "configurations": {
+    "Release": {
+      "ctest_tests": 4,
+      "ctest_failures": 0,
+      "unit_cases": 64,
+      "e2e_scenarios": 2,
+      "phase1_scenario_groups": 9,
+      "total_seconds": 27.922,
+      "tests": [
+        {
+          "name": "unit.capture_core",
+          "seconds": 0.025,
+          "status": "passed"
+        },
+        {
+          "name": "unit.ffmpeg_setup",
+          "seconds": 5.173,
+          "status": "passed"
+        },
+        {
+          "name": "e2e.phase0",
+          "seconds": 3.221,
+          "status": "passed"
+        },
+        {
+          "name": "e2e.phase1",
+          "seconds": 19.503,
+          "status": "passed"
+        }
+      ],
+      "encoder": "libx264",
+      "native_capture": {
+        "moving_frames": 90,
+        "static_frames": 60,
+        "resolution": "1080x1920",
+        "audio_streams": 0,
+        "faststart": true
+      },
+      "artifacts": "build/vs2022-x64/test-results/Release"
+    },
+    "Debug": {
+      "ctest_tests": 4,
+      "ctest_failures": 0,
+      "unit_cases": 64,
+      "e2e_scenarios": 2,
+      "phase1_scenario_groups": 9,
+      "total_seconds": 28.455,
+      "tests": [
+        {
+          "name": "unit.capture_core",
+          "seconds": 0.027,
+          "status": "passed"
+        },
+        {
+          "name": "unit.ffmpeg_setup",
+          "seconds": 5.617,
+          "status": "passed"
+        },
+        {
+          "name": "e2e.phase0",
+          "seconds": 3.188,
+          "status": "passed"
+        },
+        {
+          "name": "e2e.phase1",
+          "seconds": 19.623,
+          "status": "passed"
+        }
+      ],
+      "encoder": "libx264",
+      "native_capture": {
+        "moving_frames": 90,
+        "static_frames": 60,
+        "resolution": "1080x1920",
+        "audio_streams": 0,
+        "faststart": true
+      },
+      "artifacts": "build/vs2022-x64/test-results/Debug"
+    }
+  }
+}
