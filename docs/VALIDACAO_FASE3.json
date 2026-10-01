@@ -1,0 +1,377 @@
+{
+  "phase": 3,
+  "date": "2026-10-01",
+  "implementation": {
+    "recorder_module": "src/recorder.cpp",
+    "recorder_header": "src/recorder.h",
+    "validation_executable": "YourotsCapturePhase3",
+    "fps": 30,
+    "queue_capacity": 4,
+    "output": {
+      "container": "mp4",
+      "video_codec": "h264",
+      "width": 1080,
+      "height": 1920,
+      "pixel_format": "yuv420p",
+      "sample_aspect_ratio": "1:1",
+      "color_space": "bt709",
+      "audio_streams": 0,
+      "temporary_container": "mkv",
+      "faststart": true,
+      "r_frame_rate": "30/1",
+      "avg_frame_rate": "30/1",
+      "time_base": "1/15360",
+      "ticks_per_frame": 512,
+      "packet_count_verified": true
+    },
+    "encoder_selection": {
+      "preferred": "h264_nvenc",
+      "fallback": "libx264",
+      "probe_before_recording": true,
+      "fps_60_enabled": false
+    },
+    "recorder_core": "src/recorder_core.cpp"
+  },
+  "filter_comparison": {
+    "source": "artifacts/phase1/mobile.png",
+    "method": "upscale 486x864 to 1080x1920, downscale to 486x864, compare SSIM to source",
+    "ssim": {
+      "bilinear": 0.978518,
+      "bicubic": 0.991162,
+      "lanczos": 0.993128
+    },
+    "selected": "lanczos",
+    "evidence_origin": "original_phase3_implementation; retained historical comparison"
+  },
+  "real_smoke_recording": {
+    "source": "Microsoft Edge - Yourots Idle",
+    "crop": "410,176,486,864",
+    "requested_seconds": 3,
+    "selected_encoder": "libx264",
+    "frames": 91,
+    "duration_seconds": 3.033,
+    "source_frames_skipped": 346,
+    "queue_overflows": 0,
+    "artifact": "artifacts/phase3/phase3-real.mp4",
+    "ffprobe": {
+      "codec_name": "h264",
+      "profile": "High",
+      "width": 1080,
+      "height": 1920,
+      "pixel_format": "yuv420p",
+      "sample_aspect_ratio": "1:1",
+      "display_aspect_ratio": "9:16",
+      "color_range": "tv",
+      "color_space": "bt709",
+      "color_transfer": "bt709",
+      "color_primaries": "bt709",
+      "r_frame_rate": "30/1",
+      "streams": 1,
+      "audio_streams": 0
+    },
+    "mp4_atoms": {
+      "moov_offset": 36,
+      "mdat_offset": 2465
+    },
+    "temporary_mkv_removed_after_success": true,
+    "evidence_origin": "original_phase3_implementation; retained historical manual smoke result"
+  },
+  "verification": {
+    "release_build": "passed",
+    "debug_build": "passed",
+    "unit_tests_created": true,
+    "unit_tests_run": true,
+    "e2e_tests_created": true,
+    "e2e_tests_run": true,
+    "remaining_validation_processes": 0,
+    "note": "Full CTest suite passed in Release and Debug after recording/export fixes."
+  },
+  "completed_at": "2026-10-01T15:33:13-03:00",
+  "timezone": "America/Sao_Paulo",
+  "base_commit": "42018bfc2e6c70d9cb3597e5d3d4ebf4edd4d07f",
+  "source_state": "working_tree_including_phase3_implementation_tests_and_fixes",
+  "status": "passed",
+  "configurations": {
+    "Release": {
+      "ctest_tests": 8,
+      "ctest_failures": 0,
+      "unit_cases": 235,
+      "unit_breakdown": {
+        "capture_core": 50,
+        "calibration": 87,
+        "recorder": 84,
+        "ffmpeg_setup": 14
+      },
+      "e2e_scenarios": 4,
+      "phase1_scenario_groups": 9,
+      "phase2_scenario_groups": 19,
+      "phase3_scenario_groups": 21,
+      "total_test_seconds": 86.832,
+      "tests": [
+        {
+          "name": "unit.capture_core",
+          "seconds": 0.024,
+          "status": "passed"
+        },
+        {
+          "name": "unit.calibration",
+          "seconds": 0.681,
+          "status": "passed"
+        },
+        {
+          "name": "unit.recorder",
+          "seconds": 0.03,
+          "status": "passed"
+        },
+        {
+          "name": "unit.ffmpeg_setup",
+          "seconds": 5.024,
+          "status": "passed"
+        },
+        {
+          "name": "e2e.phase0",
+          "seconds": 3.104,
+          "status": "passed"
+        },
+        {
+          "name": "e2e.phase1",
+          "seconds": 21.02,
+          "status": "passed"
+        },
+        {
+          "name": "e2e.phase2",
+          "seconds": 6.822,
+          "status": "passed"
+        },
+        {
+          "name": "e2e.phase3",
+          "seconds": 50.128,
+          "status": "passed"
+        }
+      ],
+      "phase3": {
+        "status": "passed",
+        "scope": "phase3_production_recorder_real_wgc_and_media_tools",
+        "cases": [
+          "missing_saved_calibration_rejected",
+          "moving_native_capture_unicode_path_metadata_pixels_and_faststart",
+          "saved_source_identity_crop_frame_and_dpi_used_without_modification",
+          "saved_dpi_frame_and_ambiguous_identity_rejected",
+          "invalid_cli_crop_tools_output_and_source_rejected",
+          "recorder_lifecycle_cycles",
+          "recorder_lifecycle_pressure",
+          "recorder_lifecycle_recovery",
+          "recorder_lifecycle_destructor",
+          "media_tool_verbose_cpu",
+          "media_tool_all_encoders_fail",
+          "media_tool_encoder_exit",
+          "media_tool_remux_fail",
+          "media_tool_probe_fail",
+          "media_tool_audio_fail",
+          "media_tool_unexpected_audio",
+          "media_tool_probe_nan",
+          "real_remux_write_failure_preserves_mkv",
+          "static_source_repeats_frames_and_preserves_duration",
+          "source_closed_stops_with_error_and_preserves_mkv",
+          "source_resized_stops_with_error_and_preserves_mkv"
+        ],
+        "moving_video": {
+          "frames": 61,
+          "duration_seconds": 2.033333,
+          "marker_centers": [
+            157.5,
+            245.5,
+            89.5
+          ],
+          "faststart": true,
+          "full_decode": true,
+          "four_corners": true,
+          "audio_streams": 0
+        },
+        "encoder": "libx264",
+        "queue_overflows": 31,
+        "static_video": {
+          "frames": 31,
+          "duration_seconds": 1.033333,
+          "marker_centers": [
+            85.5,
+            85.5,
+            85.5
+          ],
+          "faststart": true,
+          "full_decode": true,
+          "four_corners": true,
+          "audio_streams": 0
+        },
+        "process_tree_cleanup": "Windows jobs closed for every recorder process"
+      },
+      "artifacts": "build/vs2022-x64/test-results/Release",
+      "ctest_report_sha256": "5456f475d43a36d6d2045a45518b8d350c540f1fb024883e41fde438b2b10870",
+      "phase3_report_sha256": "22e70c6eb6e118d1dc08505f156507ff8f313f5ac80cd2dccdc3aa9186d5a4c5"
+    },
+    "Debug": {
+      "ctest_tests": 8,
+      "ctest_failures": 0,
+      "unit_cases": 235,
+      "unit_breakdown": {
+        "capture_core": 50,
+        "calibration": 87,
+        "recorder": 84,
+        "ffmpeg_setup": 14
+      },
+      "e2e_scenarios": 4,
+      "phase1_scenario_groups": 9,
+      "phase2_scenario_groups": 19,
+      "phase3_scenario_groups": 21,
+      "total_test_seconds": 86.752,
+      "tests": [
+        {
+          "name": "unit.capture_core",
+          "seconds": 0.029,
+          "status": "passed"
+        },
+        {
+          "name": "unit.calibration",
+          "seconds": 0.656,
+          "status": "passed"
+        },
+        {
+          "name": "unit.recorder",
+          "seconds": 0.084,
+          "status": "passed"
+        },
+        {
+          "name": "unit.ffmpeg_setup",
+          "seconds": 4.969,
+          "status": "passed"
+        },
+        {
+          "name": "e2e.phase0",
+          "seconds": 3.139,
+          "status": "passed"
+        },
+        {
+          "name": "e2e.phase1",
+          "seconds": 20.028,
+          "status": "passed"
+        },
+        {
+          "name": "e2e.phase2",
+          "seconds": 6.873,
+          "status": "passed"
+        },
+        {
+          "name": "e2e.phase3",
+          "seconds": 50.974,
+          "status": "passed"
+        }
+      ],
+      "phase3": {
+        "status": "passed",
+        "scope": "phase3_production_recorder_real_wgc_and_media_tools",
+        "cases": [
+          "missing_saved_calibration_rejected",
+          "moving_native_capture_unicode_path_metadata_pixels_and_faststart",
+          "saved_source_identity_crop_frame_and_dpi_used_without_modification",
+          "saved_dpi_frame_and_ambiguous_identity_rejected",
+          "invalid_cli_crop_tools_output_and_source_rejected",
+          "recorder_lifecycle_cycles",
+          "recorder_lifecycle_pressure",
+          "recorder_lifecycle_recovery",
+          "recorder_lifecycle_destructor",
+          "media_tool_verbose_cpu",
+          "media_tool_all_encoders_fail",
+          "media_tool_encoder_exit",
+          "media_tool_remux_fail",
+          "media_tool_probe_fail",
+          "media_tool_audio_fail",
+          "media_tool_unexpected_audio",
+          "media_tool_probe_nan",
+          "real_remux_write_failure_preserves_mkv",
+          "static_source_repeats_frames_and_preserves_duration",
+          "source_closed_stops_with_error_and_preserves_mkv",
+          "source_resized_stops_with_error_and_preserves_mkv"
+        ],
+        "moving_video": {
+          "frames": 61,
+          "duration_seconds": 2.033333,
+          "marker_centers": [
+            157.5,
+            241.5,
+            85.5
+          ],
+          "faststart": true,
+          "full_decode": true,
+          "four_corners": true,
+          "audio_streams": 0
+        },
+        "encoder": "libx264",
+        "queue_overflows": 31,
+        "static_video": {
+          "frames": 31,
+          "duration_seconds": 1.033333,
+          "marker_centers": [
+            85.5,
+            85.5,
+            85.5
+          ],
+          "faststart": true,
+          "full_decode": true,
+          "four_corners": true,
+          "audio_streams": 0
+        },
+        "process_tree_cleanup": "Windows jobs closed for every recorder process"
+      },
+      "artifacts": "build/vs2022-x64/test-results/Debug",
+      "ctest_report_sha256": "c8f6f388c28f73e530397606e8ea8715366817ad9202ec141c646da8ae43749e",
+      "phase3_report_sha256": "1d97af12cbfb4005fdca003ae487e3422610c5f735fb3bbbc63f7a5d4612ecd4"
+    }
+  },
+  "fixes_validated": [
+    "Recorder state, counters, queues and encoder resources reset between recordings, including error recovery.",
+    "External process output drained while running and after exit, bounded to 1 MiB to avoid pipe deadlock and truncated diagnostics.",
+    "MKV timestamps normalized to exact 30 FPS during stream-copy MP4 remux; B-frame order preserved.",
+    "FFprobe checks nominal/average frame rates, frame count, limited range and strict finite duration, rejecting NaN.",
+    "Source window existence checked during sampling and WGC stopped on the control thread on every CLI exit.",
+    "CLI HWND suffixes and non-MP4 destinations rejected; recording errors return promptly with diagnostics."
+  ],
+  "limitations": [
+    "Controlled native Win32 source exercises real WGC and media tools; current E2E does not operate Edge or depend on game state.",
+    "Real NVENC probe selects libx264 in this environment; hardware NVENC encoding requires a driver that passes the probe.",
+    "Physical monitor scale changes, long recordings and the 60 FPS preset remain in phase 5.",
+    "UI recording controls belong to phase 4; phase 3 tests exercise the production backend and its validation executable."
+  ],
+  "source_sha256_lf": {
+    "cmake/Dependencies.cmake": "6c7277365837aaa8c49c8cc15456273782d8658b307ebbf7fdc6830886323661",
+    "CMakeLists.txt": "e9874139a90338aa46f1653eaa47b51714366689a735821a8631adc6689cbd09",
+    "CMakePresets.json": "da2b4779445668af79df947d54190482a90e44348d2fa6951dabca9524a5aef8",
+    "scripts/check-ffmpeg.ps1": "2b189863fc49b5043c56290ba3ed881acb27b67c148b9f5aba1b4e536d4525e9",
+    "scripts/ffmpeg-functions.ps1": "6490bd42ec131f66ad98f568049d35d19e78f5e411468e3bcc0ffec50972c05f",
+    "scripts/setup-ffmpeg.ps1": "ffbeae90871f1ef161edee9e3998fbe613d360a8ead2cc84cf10c6a92482821b",
+    "src/calibration.cpp": "957d904e25370068b7dc95f178988dc2b9b9b5d12139f81534b9ded9d81ede54",
+    "src/calibration.h": "090643c8f53d367b96ec461fb4477747e4a8fcf62c620e4c4e4f2b1386ea5111",
+    "src/capture_core.cpp": "c1b1d556f5bd72cc023fd483f495328b9ff3e3cc1231b0578cb4fe127a64ee47",
+    "src/capture_core.h": "a30df101b655585cd21b263d922cc0d64cb6b5ca12cb9470a8b430d4332ee428",
+    "src/capture_preview.cpp": "01e89d6cd4206fd124e75cca8079c8b707fd7866169e86791248b5abbb427cd4",
+    "src/capture_preview.h": "b8129e6e0eda84d28904b97e4a2d5a70ac619427412b64e42a6ad3b42e346202",
+    "src/main.cpp": "46cf4c1a6dcaec59dc54851a1c83cbe7cab402203a1a0fc143a2dd606ce05bed",
+    "src/phase1_poc.cpp": "cb9978396c31abcebb358e03c09da26dd4bfd3b35a71a92622e2bf6dbee29c5e",
+    "src/phase3_record.cpp": "30b2789b1ac191592e6346b991a59db5d5169058a35da3d18428e230c57739b4",
+    "src/recorder.cpp": "bff9d6fab8d6da8539b471166a5aec202fc3182d3a39a86e87ad12935a9de523",
+    "src/recorder.h": "82ecd60478625bce099ab83dce0b93355bf6e0d68147459e0d119030b1ae2aa3",
+    "src/recorder_core.cpp": "4bed0d099451bf60f08c57f097aa6872f9f0835c9f28b1789dc803de9ac57780",
+    "src/recorder_core.h": "f444a21d89db7743e1b1a961cab4574b6a1732ef8777434d39ccef677bb486b7",
+    "tests/calibration_tests.cpp": "f90db3eaad1aaf0ce7121a99848de8317624976aff67bc212364ac920061249f",
+    "tests/capture_core_tests.cpp": "d119ec73ba47b20341427fe6dde2c94de15db0c7ffc2c79f512d34cda2aceb58",
+    "tests/capture_fixture.cpp": "a7e289dc1aae1e5d39d16f1aa205434d99dcdde75391c4579f441ae3888da0bb",
+    "tests/e2e_phase0.py": "bdf9e9b9bca7e863f6eb0a046fc321e557616fe1a12474c6719710cfe96b0d36",
+    "tests/e2e_phase1.py": "22f211e5b24db5a97b78c789f81e53601ab9b114d20794476a4c49a6986d7230",
+    "tests/e2e_phase2.py": "5b7cbf30f85ea30c7d72a10649815fa9c57bd69b202aa00b6484c8352dbcb815",
+    "tests/e2e_phase3.py": "d6081603c3053871880e419f188624adb2df53933695aa3f6dc2fe2a9ded1380",
+    "tests/media_tool_fixture.cpp": "7e13e3787527a7c4490e221b76289e956ab7e8df64fde1e6476ab0b79d82c323",
+    "tests/recorder_lifecycle_e2e.cpp": "7916c435d022326700ebf186481991b7e9b10d82a88635d42922d9fe7abf7970",
+    "tests/recorder_tests.cpp": "c7188af214fb8a269099e8ba4438b14b8db1cde916d66145971a7f6daf6d2294",
+    "tests/run-unit.ps1": "37294915e7c9b73b2236707167d6306645f20bb3f6a58cb7705cd80bbe7f08a2",
+    "tests/setup-ffmpeg.Tests.ps1": "73aed956f599f4277f54357bdb93a758d1cd9a27cebf68e643e6f52697888b09"
+  }
+}

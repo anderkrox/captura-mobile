@@ -1,4 +1,4 @@
-# Testes das Fases 0, 1 e 2
+# Testes das Fases 0, 1, 2 e 3
 
 Os testes usam CTest, Python 3.10 ou superior e Pester 3.4.0, disponível neste
 computador pelo Windows PowerShell. Não é necessário baixar bibliotecas de
@@ -72,6 +72,22 @@ GPU, navegador nem FFmpeg. O relatório JUnit fica em `calibration.xml`.
 
 Esses casos usam arquivos pequenos no `TestDrive` do Pester e mocks dos probes.
 Não baixam pacotes nem executam os encoders reais.
+
+`recorder_tests.cpp` contém 84 casos sobre `RecorderCore`, usado pelo gravador:
+
+- Preset de 30 FPS, capacidade de 1 a 32 posições e destino MP4.
+- Recorte BGRA com verificação de canais, linhas, bordas, truncamento e overflow.
+- Argumentos CPU/NVENC e remultiplexação, conferidos com o parser nativo do Windows,
+  incluindo caminhos Unicode com espaços, vídeo sem áudio e `faststart`.
+- Metadados obrigatórios do FFprobe, quantidade de quadros, taxa nominal/média,
+  duração finita, parsing completo, campos duplicados e ausência de áudio.
+- Limite da fila, descarte do quadro mais antigo e liberação da memória.
+- Preenchimento de lacunas com o último quadro, cena estática, descarte inicial,
+  pacotes fora de ordem e erro de escrita sem contar um quadro incompleto.
+
+`RecorderTests` não usa GPU nem processos externos. O relatório JUnit fica em
+`recorder.xml`. A cadência usa o relógio real no E2E; os unitários conferem
+as posições da linha do tempo sem esperas que dependam do escalonador.
 
 ## E2E da Fase 0
 
@@ -155,11 +171,57 @@ O recebimento de quadros ocorre na thread interna do pool, conforme a
 A inicialização WinRT do aplicativo usa MTA para permitir a recriação dos
 buffers nessa thread; o E2E verifica crescimento e redução reais da fonte.
 
+## E2E da Fase 3
+
+`e2e_phase3.py` executa o módulo `Recorder` de produção por
+`YourotsCapturePhase3` e `RecorderLifecycleE2E`, com captura real de
+`CaptureFixture` por Windows.Graphics.Capture / Direct3D 11.
+
+São 21 grupos de cenários: gravação com movimento e cena estática; diretórios e caminhos
+Unicode; calibração salva, DPI, tamanho e identidade ambígua; argumentos,
+recortes e dependências inválidos; falha ao criar o MP4; fechamento e
+redimensionamento da fonte, inclusive quando o recorte ainda cabe no quadro.
+
+O executável de apoio verifica dois ciclos no mesmo gravador, início e parada
+duplicados, nova tentativa após falha de inicialização, recuperação de erro do
+encoder e destruição durante a gravação. `MediaToolFixture` força falhas dos
+probes, saída extensa, atraso de leitura para transbordar a fila, falha do
+encoder/remux/FFprobe e presença de áudio/duração NaN. A codificação dos
+vídeos aprovados continua usando FFmpeg real; o fallback CPU é exercitado
+mesmo em máquinas com NVENC disponível.
+
+O FFprobe e a decodificação completa conferem resolução, H.264, `yuv420p`,
+BT.709, SAR, ausência de áudio, quantidade de quadros e duração. Os timestamps
+PTS/DTS e a duração dos pacotes são conferidos na cadência exata de 30 FPS.
+Os pixels dos quatro cantos e do marcador conferem recorte e movimento; o
+átomo `moov` deve preceder `mdat`. Os hashes dos pacotes H.264 antes/depois do
+remux também são comparados para confirmar ausência de recodificação.
+
+A conversão de timestamps do MKV para a grade de 30 FPS usa o filtro
+[`setts` do FFmpeg](https://ffmpeg.org/ffmpeg-bitstream-filters.html#setts),
+com timebase 1/15360 e 512 ticks por quadro, preservando a ordem dos B-frames.
+O MKV só é removido após validação; falhas preservam o temporário. Cada processo
+do gravador pertence a um Job Object do Windows que encerra também seus filhos
+ao sair do teste. O `LOCALAPPDATA` aponta para uma pasta temporária isolada.
+
+Para executar somente esta fase:
+
+```powershell
+ctest --preset release -R 'unit.recorder|e2e.phase3'
+ctest --preset debug -R 'unit.recorder|e2e.phase3'
+```
+
+É necessária uma sessão interativa do Windows com desktop ativo. Os E2E são
+serializados pelo CTest; execute as configurações uma após a outra. Não é
+necessário abrir o Edge ou o jogo. A inicialização NVENC real é tentada, mas
+sua codificação só pode ser validada quando o driver permite o probe.
+
 Os resultados ficam em `build/vs2022-x64/test-results/<configuração>/`:
 
 - `unit.xml`: relatório NUnit dos testes unitários.
 - `capture-core.xml`: 50 testes do núcleo de captura, em JUnit XML.
 - `calibration.xml`: 87 testes de calibração, em JUnit XML.
+- `recorder.xml`: 84 testes do núcleo de gravação, em JUnit XML.
 - `e2e/report.json`: resultado do E2E, encoder escolhido e diagnóstico NVENC.
 - `e2e/ffprobe.json`: metadados do MP4.
 - `e2e/recording.mkv` e `e2e/recording.mp4`: vídeo sintético preservado para inspeção.
@@ -168,12 +230,31 @@ Os resultados ficam em `build/vs2022-x64/test-results/<configuração>/`:
 - `e2e-phase1/*.png`, `*.mp4` e `*.ffprobe.json`: quadros, vídeos e metadados.
 - `e2e-phase2/report.json`: resultado dos 19 grupos da interface/calibração.
 - `e2e-phase2/preview-*.bmp`: screenshots da prévia real conferidos por pixels.
+- `e2e-phase3/report.json`: resultado dos grupos da gravação/exportação.
+- `e2e-phase3/*.log`, `*.mp4`, `*.ffprobe.json`: diagnósticos, vídeos e metadados.
+- `e2e-phase3/*.recording.mkv`: temporários preservados nos testes de falha/destruição.
 - `ctest.xml`: resultado consolidado, quando usado `--output-junit`.
 
 Cada processo externo tem prazo de execução. Falhas retornam código diferente
 de zero e são reportadas pelo CTest; arquivos de vídeo úteis são preservados.
 
 ## Última execução
+
+Em 01/10/2026 às 15:33 (America/Sao_Paulo), builds Release e Debug
+x64 aprovados. A suíte completa passou com 8/8 entradas CTest em cada
+configuração: 50 casos de captura, 87 de calibração, 84 de gravação e 14 de
+dependências (235 unitários), mais os E2E das Fases 0, 1, 2 e 3. Os 21 grupos
+da Fase 3 passaram nas duas configurações, incluindo pressão real da fila,
+reinício/recuperação do gravador, cadência exata e preservação do MKV em falhas.
+Soma dos tempos dos testes: 86,832 s em Release e 86,752 s em Debug.
+Nenhum processo de validação permaneceu em execução.
+
+O resumo versionado e os hashes dos fontes validados estão em
+[VALIDACAO_FASE3.json](../docs/VALIDACAO_FASE3.json). Os relatórios completos e
+vídeos ficam nas pastas de artefatos indicadas acima. O encoder real usado foi
+`libx264`; a codificação NVENC depende de um driver que passe no probe.
+
+## Histórico da Fase 2
 
 Em 01/10/2026 às 14:32 (America/Sao_Paulo), builds Release e Debug x64
 aprovados. A suíte completa passou com 6/6 entradas CTest em cada

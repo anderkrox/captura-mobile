@@ -1,7 +1,7 @@
 # Plano de desenvolvimento — Captura Mobile do Yourots
 
 Data: 1 de outubro de 2026.
-Status: implementação iniciada; Fases 1 e 2 validadas tecnicamente em 01/10/2026.
+Status: implementação iniciada; Fases 1, 2 e 3 validadas tecnicamente em 01/10/2026.
 
 ## 1. Objetivo
 
@@ -253,20 +253,71 @@ Comandos e cobertura: [tests/README.md](tests/README.md). Resumo versionado:
 
 **Objetivo:** gerar arquivos finais corretos e manter a gravação estável.
 
-- [ ] Implementar envio de quadros recortados ao FFmpeg.
-- [ ] Usar relógio monotônico para controlar a cadência de 30 FPS.
-- [ ] Manter filas limitadas para evitar acúmulo de memória e atraso.
-- [ ] Repetir o último quadro quando necessário para manter a duração correta de uma cena estática.
-- [ ] Descartar quadros excedentes de forma controlada quando a fonte produzir mais quadros que o preset.
-- [ ] Testar a inicialização de NVENC e oferecer alternativa por CPU em caso de indisponibilidade.
-- [ ] Configurar saída 1080 × 1920, pixels quadrados, SDR e `yuv420p`.
-- [ ] Comparar filtros de ampliação para escolher uma configuração que preserve textos e gráficos do jogo.
-- [ ] Excluir qualquer entrada e faixa de áudio.
-- [ ] Gravar em MKV temporário.
-- [ ] Finalizar o encoder encerrando o fluxo de entrada e aguardando sua conclusão.
-- [ ] Gerar MP4 sem recodificação, com `faststart`.
-- [ ] Conferir o resultado com FFprobe antes de indicar sucesso.
-- [ ] Habilitar 60 FPS apenas após validar desempenho e qualidade.
+- [x] Implementar envio de quadros recortados ao FFmpeg.
+- [x] Usar relógio monotônico para controlar a cadência de 30 FPS.
+- [x] Manter filas limitadas para evitar acúmulo de memória e atraso.
+- [x] Repetir o último quadro quando necessário para manter a duração correta de uma cena estática.
+- [x] Descartar quadros excedentes de forma controlada quando a fonte produzir mais quadros que o preset.
+- [x] Testar a inicialização de NVENC e oferecer alternativa por CPU em caso de indisponibilidade.
+- [x] Configurar saída 1080 × 1920, pixels quadrados, SDR e `yuv420p`.
+- [x] Comparar filtros de ampliação para escolher uma configuração que preserve textos e gráficos do jogo.
+- [x] Excluir qualquer entrada e faixa de áudio.
+- [x] Gravar em MKV temporário.
+- [x] Finalizar o encoder encerrando o fluxo de entrada e aguardando sua conclusão.
+- [x] Gerar MP4 sem recodificação, com `faststart`.
+- [x] Conferir o resultado com FFprobe antes de indicar sucesso.
+- [x] Habilitar 60 FPS apenas após validar desempenho e qualidade.
+
+**Implementação em 01/10/2026:** foi criado o módulo `Recorder`, separado da
+interface da Fase 4. Ele amostra o último quadro disponível com
+`std::chrono::steady_clock` a 30 FPS, recorta somente a calibração 9:16 e usa
+uma fila limitada de quatro posições entre a cadência e a escrita no pipe do
+FFmpeg. Quadros da fonte que chegam entre dois instantes da linha do tempo são
+descartados pela amostragem do quadro mais recente. Se uma posição da fila for
+perdida por pressão do encoder, o escritor preenche a lacuna com o último
+quadro disponível; cenas estáticas também continuam produzindo um quadro por
+posição da linha do tempo, sem depender da chegada de uma nova imagem da API de
+captura.
+
+Antes de gravar, o módulo executa uma inicialização curta de `h264_nvenc` e usa
+`libx264` automaticamente quando o NVENC não está disponível. A saída do
+encoder é um MKV temporário. Ao finalizar, o pipe de entrada é fechado e o
+processo do FFmpeg é aguardado; em seguida o vídeo é remultiplexado sem
+recodificação para MP4 com `faststart`. O FFprobe valida H.264, 1080 × 1920,
+30 FPS, `yuv420p`, SAR 1:1, BT.709, duração coerente e ausência de streams de
+áudio antes que a operação seja considerada concluída. O MKV temporário só é
+removido depois dessa validação.
+
+Foi mantido um executável de apoio `YourotsCapturePhase3` para exercitar esse
+backend antes dos controles da Fase 4. Em uma gravação real de três segundos da
+janela do Edge do Yourots, usando o recorte físico `410,176,486,864`, o fallback
+`libx264` foi selecionado e o arquivo final teve 91 quadros, duração de 3,033 s,
+1080 × 1920, H.264 High, `yuv420p`, SAR 1:1, BT.709, `r_frame_rate=30/1` e um
+único stream de vídeo. A fila não transbordou. O MP4 apresentou o átomo `moov`
+antes do `mdat`, confirmando o `faststart` no arquivo produzido.
+
+Para a ampliação da imagem foram comparados `bilinear`, `bicubic` e `lanczos`
+com a captura real `artifacts/phase1/mobile.png`. Após ampliar para 1080 × 1920
+e reduzir novamente para 486 × 864, os SSIM obtidos foram, respectivamente,
+0,978518, 0,991162 e 0,993128. `lanczos` foi mantido como filtro da Fase 3 por
+preservar melhor o conteúdo original nesse comparativo. O preset de 60 FPS
+permanece desabilitado até a validação de desempenho e qualidade prevista na
+Fase 5.
+
+**Validação automatizada desta fase:** foram adicionados 84 casos unitários do
+núcleo de gravação e 21 grupos E2E do `Recorder` de produção com captura nativa real,
+FFmpeg/FFprobe, verificação de pixels, cadência, duração e `faststart`. A
+cobertura inclui cena estática, pressão da fila, reinício e recuperação do
+gravador, calibração salva, caminhos Unicode e falhas da fonte/encoder/remux/probe.
+Os testes também verificam a preservação do MKV em falhas e ausência de
+recodificação pelos hashes dos pacotes H.264. Foram corrigidos o estado de
+reinício, a leitura da saída de processos e a aceitação de duração NaN; a
+remultiplexação normaliza os timestamps arredondados do MKV para manter
+`r_frame_rate=avg_frame_rate=30/1`. Comandos e limites da cobertura:
+[tests/README.md](tests/README.md). Release e Debug x64 passaram com 8/8 entradas
+CTest cada, totalizando 235 casos unitários e os E2E das Fases 0 a 3. Registro
+estruturado da execução:
+[docs/VALIDACAO_FASE3.json](docs/VALIDACAO_FASE3.json).
 
 **Entrega:** MP4 final em 1080 × 1920 e 30 FPS, sem áudio.
 
