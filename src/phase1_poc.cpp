@@ -428,12 +428,17 @@ public:
         return border_required_;
     }
 
+    DWORD CallbackThreadId() const noexcept {
+        return callback_thread_id_.load();
+    }
+
 private:
     void OnFrame(const Direct3D11CaptureFramePool& sender) noexcept {
         std::scoped_lock callback_lock(callback_mutex_);
         if (!started_.load()) {
             return;
         }
+        callback_thread_id_.store(GetCurrentThreadId());
         try {
             auto frame = sender.TryGetNextFrame();
             if (!frame) {
@@ -551,6 +556,7 @@ private:
     FrameBuffer latest_;
     std::string last_error_;
     std::atomic_bool started_{false};
+    std::atomic<DWORD> callback_thread_id_{};
     bool border_property_supported_{};
     bool border_required_{};
 };
@@ -588,7 +594,9 @@ public:
                 << L" -hide_banner -loglevel warning -y"
                 << L" -f rawvideo -pixel_format bgra -video_size " << width << L'x' << height
                 << L" -framerate 30 -i -"
-                << L" -vf scale=1080:1920:flags=lanczos,format=yuv420p"
+                << L" -vf scale=1080:1920:flags=lanczos:out_color_matrix=bt709:out_range=tv,"
+                   L"setsar=1,format=yuv420p,"
+                   L"setparams=range=limited:color_primaries=bt709:color_trc=bt709:colorspace=bt709"
                 << L" -an -c:v libx264 -preset veryfast -crf 18 -movflags +faststart "
                 << QuoteCommandArgument(output.wstring());
 
@@ -784,6 +792,7 @@ void Record(WindowCapture& capture, const Options& options, const FrameBuffer& i
         throw std::runtime_error("Duracao invalida para gravacao.");
     }
     FfmpegProcess ffmpeg(options.ffmpeg, options.record, initial.width, initial.height);
+    std::cout << "record_started=true\n";
 
     const int frame_count = options.seconds * 30;
     auto deadline = std::chrono::steady_clock::now();
@@ -817,6 +826,8 @@ void PrintCaptureDiagnostics(HWND hwnd, const WindowCapture& capture, const Fram
         << "window_rect=" << rect.left << ',' << rect.top << ',' << (rect.right - rect.left) << ',' << (rect.bottom - rect.top) << '\n'
         << "captured_frame=" << frame.width << 'x' << frame.height << '\n'
         << "callback_thread=" << "free_threaded_frame_pool" << '\n'
+        << "callback_thread_id=" << capture.CallbackThreadId() << '\n'
+        << "control_thread_id=" << GetCurrentThreadId() << '\n'
         << "border_property_supported=" << (capture.BorderPropertySupported() ? "true" : "false") << '\n';
     if (capture.BorderPropertySupported()) {
         std::cout << "border_required=" << (capture.BorderRequired() ? "true" : "false") << '\n';
@@ -870,6 +881,10 @@ int wmain(int argc, wchar_t** argv) {
 
         if (options.overlay_probe) {
             HWND overlay = CreateOverlayWindow(hwnd, options.crop);
+            struct OverlayGuard {
+                HWND hwnd;
+                ~OverlayGuard() { DestroyWindow(hwnd); }
+            } overlay_guard{overlay};
             std::this_thread::sleep_for(750ms);
             RECT overlay_rect{};
             GetWindowRect(overlay, &overlay_rect);
@@ -886,7 +901,6 @@ int wmain(int argc, wchar_t** argv) {
                 std::cout << "overlay_snapshot=" << WideToUtf8(fs::absolute(options.overlay_snapshot).wstring()) << '\n';
             }
             std::cout << "overlay_magenta_pixels=" << CountMagentaPixels(overlay_frame) << '\n';
-            DestroyWindow(overlay);
         }
 
         if (!options.record.empty()) {

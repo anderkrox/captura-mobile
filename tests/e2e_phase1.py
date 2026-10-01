@@ -108,6 +108,8 @@ def verify_video(args, path: Path, seconds: int, *, moving: bool) -> dict:
     expected = {'codec_type': 'video', 'codec_name': 'h264', 'width': 1080, 'height': 1920,
                 'pix_fmt': 'yuv420p', 'r_frame_rate': '30/1', 'avg_frame_rate': '30/1',
                 'sample_aspect_ratio': '1:1', 'display_aspect_ratio': '9:16',
+                'color_range': 'tv', 'color_space': 'bt709',
+                'color_transfer': 'bt709', 'color_primaries': 'bt709',
                 'nb_read_frames': str(seconds * 30)}
     for key, value in expected.items():
         require(stream.get(key) == value, f'{key}: {stream.get(key)}, esperado {value}.')
@@ -164,7 +166,7 @@ def recording_failure(args, source: SourceWindow, kind: str) -> None:
             stdout=stream, stderr=stream, creationflags=subprocess.CREATE_NO_WINDOW)
         try:
             deadline = time.monotonic() + 10
-            while 'captured_frame=486x864' not in log.read_text(encoding='utf-8', errors='replace'):
+            while 'record_started=true' not in log.read_text(encoding='utf-8', errors='replace'):
                 require(process.poll() is None, f'{kind}: captura nao inicializou.')
                 require(time.monotonic() < deadline, f'{kind}: tempo excedido antes da captura.')
                 time.sleep(0.05)
@@ -207,6 +209,9 @@ def main() -> int:
                 diag = diagnostics(execute(args, f'snapshot_{cycle}', [*base, '--snapshot', str(png)]))
                 require(diag.get('graphics_capture_supported') == 'true', 'WGC nao suportado.')
                 require(diag.get('callback_thread') == 'free_threaded_frame_pool', 'Pool inesperado.')
+                require(int(diag['callback_thread_id']) > 0 and
+                        diag['callback_thread_id'] != diag['control_thread_id'],
+                        'Quadro recebido na thread de controle.')
                 check_pixels(decode_png(args, png))
             report['cases'].append('six_capture_start_stop_cycles_and_png_corners')
             overlay = args.artifacts / 'overlay.png'

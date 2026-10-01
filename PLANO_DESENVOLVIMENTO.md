@@ -179,6 +179,25 @@ Limitação confirmada para esta POC: o recorte `410,176,486,864` é a calibraç
 do layout, tamanho de janela e DPI atuais. Mudanças de tamanho, disposição do
 DevTools, zoom ou escala exigem nova calibração, que será tratada na Fase 2.
 
+**Testes automatizados em 01/10/2026:** após autorização para criar e executar
+os testes, a suíte passou em Release e Debug x64, com quatro de quatro entradas
+CTest aprovadas em cada configuração. São 64 testes unitários: 50 do núcleo
+de captura e 14 das dependências. Os dois E2E cobrem a Fase 0 e a captura nativa
+da Fase 1. O novo E2E tem nove grupos de cenários com janela Win32 controlada:
+seis ciclos de início/encerramento, quatro cantos do recorte, callback em outra
+thread, sobreposição visível excluída, movimento, fonte estática, falhas do
+encoder, fechamento/redimensionamento da fonte e entradas inválidas. A janela
+controlada permite conferir pixels sem depender do estado do jogo.
+
+A validação levou a corrigir o parsing de recorte/duração, proteger o ciclo
+de vida dos callbacks, propagar falhas da captura durante a gravação e declarar
+pixels quadrados e BT.709 no vídeo. O E2E conferiu H.264, 1080 × 1920, 9:16,
+30 FPS, `yuv420p`, BT.709, `faststart`, decodificação, movimento e ausência de
+áudio. Vídeos de três segundos/90 quadros e dois segundos/60 quadros validaram
+as fontes animada e estática. Relatórios e comandos de execução:
+[tests/README.md](tests/README.md). Nenhum processo de captura ou FFmpeg dos
+testes permaneceu em execução após a suíte.
+
 **Entrega:** imagem de referência capturada e vídeo experimental de aproximadamente 30 segundos.
 
 **Critério de conclusão:** todas as extremidades do jogo aparecem, sem Console, barra de endereço, sombra externa ou barra de tarefas. Eventuais limitações da captura por janela estão documentadas antes da implementação da interface completa.

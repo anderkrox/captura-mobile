@@ -20,6 +20,14 @@ O executavel:
 - gera MP4 H.264 `yuv420p`, 1080 x 1920, sem audio, usando `libx264` nesta prova
   de conceito porque o NVENC do pacote atual exige driver mais novo.
 
+O recorte aceita quatro inteiros decimais sem sinal, com largura e altura
+positivas. `--seconds` aceita valores entre 1 e 3600. A POC informa falhas da
+captura durante a gravacao, em vez de continuar a repetir um quadro apos uma
+falha. O fechamento da fonte e o redimensionamento que invalida o recorte
+encerram a operacao com codigo de erro. Os callbacks usam uma referencia fraca
+e mantem a sessao viva durante cada chamada; o encerramento e garantido tambem
+quando ha excecoes.
+
 ## Uso
 
 Compilar sem executar a suite de testes:
@@ -61,6 +69,10 @@ O teste de sobreposicao imprime `overlay_magenta_pixels`. O valor esperado para
 captura por janela e zero ou proximo de zero, pois a janela magenta externa nao
 deve fazer parte da textura da janela capturada.
 
+`overlay_visible=true` confirma que a sobreposicao estava visivel no desktop.
+Uma fonte estatica nao precisa emitir um quadro novo durante essa operacao:
+a POC conserva o ultimo quadro recebido.
+
 ## Resultado validado em 01/10/2026
 
 No ambiente descrito no plano, a POC encontrou suporte a
@@ -95,3 +107,27 @@ enquanto a captura esta ativa, mas nao entrou no recorte nem no video.
 O FFprobe reportou para `phase1-30s.mp4`: H.264, 1080 x 1920, `yuv420p`,
 30 FPS e duracao de 30,000 segundos. O arquivo possui somente stream de video,
 sem audio.
+
+## Testes automatizados
+
+A suite agora inclui 50 testes unitarios do nucleo de captura, 14 testes
+unitarios das dependencias e dois E2E: Fase 0 e captura nativa da Fase 1.
+Instrucoes, requisitos do desktop e relatorios estao em
+[tests/README.md](../tests/README.md).
+
+Em 01/10/2026, ambos os builds x64 (Release e Debug) e todas as quatro entradas
+CTest de cada configuracao passaram: 64 casos unitarios e dois E2E.
+
+O E2E da Fase 1 confere pixels de uma janela Win32 controlada, pois isso permite
+detectar recortes deslocados e perda de movimento sem depender do estado do
+jogo. No Windows atual, uma janela de teste com `WS_EX_TOOLWINDOW` foi rejeitada
+por `CreateForWindow` com `E_INVALIDARG`; a fonte de teste usa `WS_EX_APPWINDOW`.
+A selecao de uma janela visivel nao garante que o sistema permita captura.
+
+Os videos produzidos pela POC passam a declarar pixels quadrados e BT.709.
+Essa verificacao foi acrescentada apos o E2E detectar metadados de proporcao
+ausentes na primeira versao.
+
+Referencias sobre callbacks e ciclo de vida:
+[CreateFreeThreaded](https://learn.microsoft.com/en-us/uwp/api/windows.graphics.capture.direct3d11captureframepool.createfreethreaded)
+e [referencias fortes e fracas em C++/WinRT](https://learn.microsoft.com/en-us/windows/uwp/cpp-and-winrt-apis/weak-references).
