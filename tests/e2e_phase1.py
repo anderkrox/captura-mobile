@@ -26,6 +26,8 @@ user32.PostMessageW.argtypes = (wintypes.HWND, wintypes.UINT, wintypes.WPARAM, w
 user32.SetWindowPos.argtypes = (wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int,
                               ctypes.c_int, ctypes.c_int, wintypes.UINT)
 user32.SetProcessDpiAwarenessContext.argtypes = (wintypes.HANDLE,)
+user32.WaitForInputIdle.argtypes = (wintypes.HANDLE, wintypes.DWORD)
+dwmapi = ctypes.WinDLL('dwmapi', use_last_error=True)
 
 
 class SourceWindow:
@@ -57,7 +59,12 @@ class SourceWindow:
                 require(user32.EnumWindows(collect, 0), 'EnumWindows falhou.')
                 time.sleep(0.05)
             require(self.hwnd is not None, 'Janela fonte ausente.')
-            time.sleep(0.15)
+            require(user32.WaitForInputIdle(wintypes.HANDLE(self.process._handle), 3000) == 0,
+                    'Fonte nao concluiu ShowWindow/UpdateWindow antes da captura.')
+            require(dwmapi.DwmFlush() == 0, 'DWM nao confirmou a apresentacao da fonte.')
+            # The compositor/capture broker on Windows 10 can outlive a prior test
+            # process briefly. Allow the newly presented fixture to settle.
+            time.sleep(2.0)
             return self
         except BaseException:
             self.__exit__(None, None, None)

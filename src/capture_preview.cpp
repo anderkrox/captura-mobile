@@ -78,8 +78,19 @@ IDirect3DDevice CreateWinrtDirect3DDevice(winrt::com_ptr<ID3D11Device>& d3d_devi
 GraphicsCaptureItem CreateCaptureItemForWindow(HWND hwnd) {
     auto interop = winrt::get_activation_factory<GraphicsCaptureItem, IGraphicsCaptureItemInterop>();
     GraphicsCaptureItem item{nullptr};
-    winrt::check_hresult(
-        interop->CreateForWindow(hwnd, winrt::guid_of<GraphicsCaptureItem>(), winrt::put_abi(item)));
+    for (unsigned attempt = 0; ; ++attempt) {
+        const auto result = interop->CreateForWindow(
+            hwnd, winrt::guid_of<GraphicsCaptureItem>(), winrt::put_abi(item));
+        if (result != E_INVALIDARG || attempt == 4 || !IsWindow(hwnd) ||
+            !IsWindowVisible(hwnd) || IsIconic(hwnd)) {
+            winrt::check_hresult(result);
+            break;
+        }
+        // Windows 10 can reject the first activation of a newly presented window.
+        // Bound retries and retain the final HRESULT for genuinely unavailable sources.
+        item = nullptr;
+        Sleep(100U << attempt);
+    }
     return item;
 }
 
@@ -180,41 +191,53 @@ struct WindowCapture::Impl {
     explicit Impl(HWND source) : hwnd(source) {}
 
     void Start(const std::weak_ptr<WindowCapture>& owner) {
-        if (!GraphicsCaptureSession::IsSupported()) {
-            throw std::runtime_error("Windows.Graphics.Capture nao e suportado nesta execucao.");
-        }
-        winrt_device = CreateWinrtDirect3DDevice(d3d_device, d3d_context);
-        item = CreateCaptureItemForWindow(hwnd);
-        frame_size = item.Size();
-        if (frame_size.Width <= 0 || frame_size.Height <= 0) {
-            throw std::runtime_error("A janela selecionada nao possui dimensoes capturaveis.");
-        }
-        pool = Direct3D11CaptureFramePool::CreateFreeThreaded(
-            winrt_device,
-            DirectXPixelFormat::B8G8R8A8UIntNormalized,
-            3,
-            frame_size);
-        session = pool.CreateCaptureSession(item);
-        frame_token = pool.FrameArrived([owner](const auto& sender, const auto&) {
-            if (auto strong = owner.lock()) {
-                strong->impl_->OnFrame(sender);
+        const char* operation = "GraphicsCaptureSession::IsSupported";
+        try {
+            if (!GraphicsCaptureSession::IsSupported()) {
+                throw std::runtime_error("Windows.Graphics.Capture nao e suportado nesta execucao.");
             }
-        });
-        frame_registered = true;
-        closed_token = item.Closed([owner](const auto&, const auto&) {
-            if (auto strong = owner.lock()) {
-                strong->impl_->SetError("A janela fonte foi fechada.");
+            operation = "D3D11CreateDevice";
+            winrt_device = CreateWinrtDirect3DDevice(d3d_device, d3d_context);
+            operation = "GraphicsCaptureItem::CreateForWindow";
+            item = CreateCaptureItemForWindow(hwnd);
+            frame_size = item.Size();
+            if (frame_size.Width <= 0 || frame_size.Height <= 0) {
+                throw std::runtime_error("A janela selecionada nao possui dimensoes capturaveis.");
             }
-        });
-        closed_registered = true;
-        started.store(true);
-        session.StartCapture();
+            operation = "Direct3D11CaptureFramePool::CreateFreeThreaded";
+            pool = Direct3D11CaptureFramePool::CreateFreeThreaded(
+                winrt_device,
+                DirectXPixelFormat::B8G8R8A8UIntNormalized,
+                3,
+                frame_size);
+            operation = "CreateCaptureSession";
+            session = pool.CreateCaptureSession(item);
+            frame_token = pool.FrameArrived([owner](const auto& sender, const auto&) {
+                if (auto strong = owner.lock()) {
+                    strong->impl_->OnFrame(sender);
+                }
+            });
+            frame_registered = true;
+            closed_token = item.Closed([owner](const auto&, const auto&) {
+                if (auto strong = owner.lock()) {
+                    strong->impl_->SetError("A janela fonte foi fechada.");
+                }
+            });
+            closed_registered = true;
+            started.store(true);
+            operation = "GraphicsCaptureSession::StartCapture";
+            session.StartCapture();
+        } catch (const winrt::hresult_error& error) {
+            throw std::runtime_error(std::string(operation) + " falhou (HRESULT=" +
+                std::to_string(error.code().value) + "): " + WideToUtf8(error.message().c_str()));
+        }
     }
 
     void Stop() noexcept {
         started.store(false);
         try {
-            std::scoped_lock callback_lock(callback_mutex);
+            // Revocation/Close can wait for callbacks. Never hold their mutex while
+            // calling those APIs: a queued callback may be waiting for this mutex.
             if (pool && frame_registered) {
                 pool.FrameArrived(frame_token);
                 frame_registered = false;
@@ -222,6 +245,10 @@ struct WindowCapture::Impl {
             if (item && closed_registered) {
                 item.Closed(closed_token);
                 closed_registered = false;
+            }
+            {
+                std::scoped_lock callback_lock(callback_mutex);
+                // Barrier: an in-flight OnFrame has finished using the resources.
             }
             if (session) {
                 session.Close();
@@ -237,6 +264,7 @@ struct WindowCapture::Impl {
     }
 
     void OnFrame(const Direct3D11CaptureFramePool& sender) noexcept {
+        if (!started.load()) return;
         std::scoped_lock callback_lock(callback_mutex);
         if (!started.load()) {
             return;

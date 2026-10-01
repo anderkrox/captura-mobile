@@ -41,6 +41,13 @@ target_compile_options(Recorder PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive- /EHsc /utf-8>
 )
 
+add_library(ApplicationControls STATIC src/application_controls.cpp)
+target_include_directories(ApplicationControls PUBLIC src)
+target_compile_definitions(ApplicationControls PUBLIC UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(ApplicationControls PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive- /EHsc /utf-8>
+)
+
 add_executable(YourotsCapture WIN32
     src/main.cpp
     src/capture_preview.cpp
@@ -105,10 +112,14 @@ target_compile_options(YourotsCapturePhase3 PRIVATE
 )
 
 target_link_libraries(YourotsCapture PRIVATE
+    ApplicationControls
+    Recorder
     Calibration
     gdi32
     d3d11
     dxgi
+    shell32
+    ole32
     windowsapp
 )
 
@@ -179,6 +190,16 @@ if(BUILD_TESTING)
     )
     set_tests_properties(unit.recorder PROPERTIES LABELS unit TIMEOUT 15)
 
+    add_executable(ApplicationControlsTests tests/application_controls_tests.cpp)
+    target_compile_options(ApplicationControlsTests PRIVATE
+        $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive- /EHsc /utf-8>
+    )
+    target_link_libraries(ApplicationControlsTests PRIVATE ApplicationControls RecorderCore)
+    add_test(NAME unit.application_controls
+        COMMAND ApplicationControlsTests "${CMAKE_CURRENT_BINARY_DIR}/test-results/$<CONFIG>/application-controls.xml"
+    )
+    set_tests_properties(unit.application_controls PROPERTIES LABELS unit TIMEOUT 20)
+
     add_executable(RecorderLifecycleE2E tests/recorder_lifecycle_e2e.cpp src/capture_preview.cpp)
     target_compile_options(RecorderLifecycleE2E PRIVATE
         $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive- /EHsc /utf-8>
@@ -247,4 +268,15 @@ if(BUILD_TESTING)
             --artifacts "${CMAKE_CURRENT_BINARY_DIR}/test-results/$<CONFIG>/e2e-phase3"
     )
     set_tests_properties(e2e.phase3 PROPERTIES LABELS e2e TIMEOUT 180 RUN_SERIAL TRUE)
+
+    add_test(NAME e2e.phase4
+        COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/e2e_phase4.py"
+            --app "$<TARGET_FILE:YourotsCapture>"
+            --tool-fixture "$<TARGET_FILE:MediaToolFixture>"
+            --fixture "$<TARGET_FILE:CaptureFixture>"
+            --ffmpeg "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ffmpeg/bin/ffmpeg.exe"
+            --ffprobe "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ffmpeg/bin/ffprobe.exe"
+            --artifacts "${CMAKE_CURRENT_BINARY_DIR}/test-results/$<CONFIG>/e2e-phase4"
+    )
+    set_tests_properties(e2e.phase4 PROPERTIES LABELS e2e TIMEOUT 240 RUN_SERIAL TRUE)
 endif()

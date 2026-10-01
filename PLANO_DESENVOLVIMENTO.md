@@ -1,7 +1,7 @@
 # Plano de desenvolvimento — Captura Mobile do Yourots
 
 Data: 1 de outubro de 2026.
-Status: implementação iniciada; Fases 1, 2 e 3 validadas tecnicamente em 01/10/2026.
+Status: implementação iniciada; Fases 1, 2, 3 e 4 validadas tecnicamente em 01/10/2026.
 
 ## 1. Objetivo
 
@@ -327,18 +327,38 @@ estruturado da execução:
 
 **Objetivo:** permitir gravações frequentes com operação simples.
 
-- [ ] Implementar estados: pronto, gravando, pausado, finalizando e erro.
-- [ ] Adicionar botões de iniciar, pausar, retomar e finalizar.
-- [ ] Implementar atalhos configuráveis e detectar conflitos de registro.
-- [ ] Exibir tempo gravado, estado e pasta de destino.
-- [ ] Remover o intervalo pausado da linha do tempo do vídeo.
-- [ ] Usar nomes de arquivo únicos sem sobrescrever gravações existentes.
-- [ ] Salvar preferências e permitir abrir a pasta de saída.
-- [ ] Pausar quando a janela for minimizada ou o enquadramento ficar inválido por uma alteração detectada.
-- [ ] Finalizar quando a janela for fechada ou ocorrer falha irrecuperável.
-- [ ] Tratar falta de espaço, ausência de permissão de escrita e saída inesperada do FFmpeg.
-- [ ] Preservar arquivos temporários úteis após falhas e oferecer tentativa de recuperação.
-- [ ] Impedir o fechamento silencioso do aplicativo com gravação ainda pendente de finalização.
+- [x] Implementar estados: pronto, gravando, pausado, finalizando e erro.
+- [x] Adicionar botões de iniciar, pausar, retomar e finalizar.
+- [x] Implementar atalhos configuráveis e detectar conflitos de registro.
+- [x] Exibir tempo gravado, estado e pasta de destino.
+- [x] Remover o intervalo pausado da linha do tempo do vídeo.
+- [x] Usar nomes de arquivo únicos sem sobrescrever gravações existentes.
+- [x] Salvar preferências e permitir abrir a pasta de saída.
+- [x] Pausar quando a janela for minimizada ou o enquadramento ficar inválido por uma alteração detectada.
+- [x] Finalizar quando a janela for fechada ou ocorrer falha irrecuperável.
+- [x] Tratar falta de espaço, ausência de permissão de escrita e saída inesperada do FFmpeg.
+- [x] Preservar arquivos temporários úteis após falhas e oferecer tentativa de recuperação.
+- [x] Impedir o fechamento silencioso do aplicativo com gravação ainda pendente de finalização.
+
+**Implementação em 01/10/2026:** o aplicativo principal passou a controlar diretamente o `Recorder` da Fase 3 com os estados pronto, gravando, pausado, finalizando e erro. Foram adicionados botões para iniciar, pausar, retomar e finalizar, contador de tempo efetivamente gravado, pasta de destino visível, seleção/abertura da pasta e nomes baseados em data/hora com sufixo incremental para impedir sobrescrita. As preferências ficam em `%LOCALAPPDATA%\YourotsCapture\preferences.ini`, separadas da calibração.
+
+Os atalhos globais de iniciar, pausar/retomar e finalizar são configuráveis na interface. O registro usa `RegisterHotKey`, detecta combinações duplicadas e conflitos com outros aplicativos e restaura a configuração anterior quando a nova combinação não pode ser registrada. Os padrões são `Ctrl+Alt+F9`, `Ctrl+Alt+F10` e `Ctrl+Alt+F11`.
+
+O `Recorder` passou a pausar sua própria linha do tempo: nenhum índice de quadro é produzido durante a pausa, portanto esse intervalo não é incluído no MP4 final. Minimização da janela fonte e mudança detectada do tamanho do quadro pausam a sessão. A retomada só é permitida quando a fonte voltou a uma condição compatível; mudanças que invalidem a calibração exigem finalizar a gravação atual e recalibrar antes de iniciar outra.
+
+Antes de gravar, o destino é verificado quanto a permissão de escrita, colisão de nomes e espaço livre mínimo. Durante a gravação o espaço disponível continua sendo acompanhado e encerramentos inesperados do FFmpeg são propagados como falha. Em qualquer falha de finalização, o `.recording.mkv` é preservado. A interface oferece recuperação desse MKV por remultiplexação e nova validação com FFprobe; o temporário só é removido após uma recuperação bem-sucedida.
+
+O fechamento da janela não é silencioso enquanto existe gravação ativa: o aplicativo solicita finalização antes de sair. Se houver um MKV preservado após falha, também avisa antes de encerrar para que o usuário possa tentar a recuperação.
+
+**Validação automatizada:** foram adicionados 87 testes unitários das regras de produção e 20 grupos E2E da interface, com captura WGC/D3D11, atalhos globais reais e FFmpeg/FFprobe. Os testes verificam estados e botões, pausas repetidas sem incluir o intervalo no MP4, preferências Unicode, conflitos de atalhos, minimização/restauração, redimensionamento, fechamento, colisões de nomes, negação real de escrita e recuperação após falhas. Os limiares de espaço de 64/32 MiB são conferidos por unitários, sem encher o disco.
+
+A validação encontrou e corrigiu a finalização incorreta de uma fonte fechada durante uma pausa, quadros transitórios na restauração de janelas minimizadas e mensagens de erro apagadas pela atualização da prévia. O FFmpeg passou a usar `-n` para impedir sobrescritas quando uma colisão surge depois de iniciar a gravação. A ativação de uma nova janela no Windows 10 recebeu tentativas limitadas para um `E_INVALIDARG` transitório observado, mantendo o diagnóstico da operação/HRESULT quando a fonte não pode ser capturada.
+
+O encerramento da captura passou a revogar eventos e fechar os recursos sem manter o mutex dos callbacks, evitando bloqueios com callbacks pendentes. As screenshots da validação usam `WM_PRINTCLIENT` e a rotina de pintura da prévia para obter uma imagem completa.
+
+Os comandos e limites de cobertura estão em [tests/README.md](tests/README.md). O E2E usa uma janela Win32 de teste e o encoder real `libx264`; seletor de pasta/Explorer, escalas físicas de DPI, DevTools e jogo continuam sujeitos à validação manual/Fase 5.
+
+**Execução final em 01/10/2026 às 18:35 (America/Sao_Paulo):** builds Release e Debug x64 aprovados; 10/10 entradas CTest em cada configuração, com 322 casos unitários e os E2E das Fases 0 a 4. Os 20 grupos da Fase 4 passaram nas duas configurações. Nenhum processo de validação permaneceu ativo. Resultados, limites de cobertura e hashes dos fontes estão em [VALIDACAO_FASE4.json](docs/VALIDACAO_FASE4.json).
 
 **Entrega:** aplicação utilizável para gravar repetidamente.
 

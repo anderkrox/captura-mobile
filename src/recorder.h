@@ -39,13 +39,25 @@ public:
     Recorder& operator=(const Recorder&) = delete;
 
     void Start();
+    void Pause();
+    void Resume();
     RecorderResult Stop();
     bool IsRecording() const noexcept;
+    bool IsPaused() const noexcept;
+    double RecordedDurationSeconds() const noexcept;
+    std::filesystem::path TemporaryPath() const;
     std::string LastError() const;
 
 private:
     struct Impl;
     std::unique_ptr<Impl> impl_;
 };
+
+RecorderResult RecoverTemporaryRecording(
+    const std::filesystem::path& ffmpeg_path,
+    const std::filesystem::path& ffprobe_path,
+    const std::filesystem::path& temporary_mkv_path,
+    const std::filesystem::path& output_path,
+    int fps = 30);
 
 } // namespace yourots

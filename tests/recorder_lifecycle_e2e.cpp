@@ -33,6 +33,9 @@ int wmain(int argc, wchar_t** argv) {
         yourots::Recorder recorder(capture,options);
         Require(!recorder.IsRecording() && recorder.LastError().empty());
         Reject([&] { recorder.Stop(); });
+        Reject([&] { recorder.Pause(); });
+        Reject([&] { recorder.Resume(); });
+        Require(!recorder.IsPaused() && recorder.RecordedDurationSeconds() == 0);
         Reject([&] { recorder.Start(); }); // No initial preview; same object must be retryable.
         Require(!recorder.IsRecording());
         capture->Start();
@@ -67,6 +70,10 @@ int wmain(int argc, wchar_t** argv) {
             Require(!fs::exists(result.temporary_mkv_path));
             auto copy = output; copy.replace_extension(L".cycle" + std::to_wstring(i) + L".mp4");
             fs::copy_file(output,copy,fs::copy_options::overwrite_existing);
+            Reject([&] { recorder.Start(); }); // Export already exists and must remain intact.
+            Require(!recorder.IsRecording() && fs::file_size(output) == fs::file_size(copy));
+            // A subsequent session must never overwrite the previous export.
+            if (i < cycles) fs::remove(output);
             std::cout << "cycle" << i << "_frames=" << result.frames_written << '\n'
                       << "cycle" << i << "_overflows=" << result.queue_overflows << '\n'
                       << "cycle" << i << "_encoder=" << (result.encoder == L"libx264" ? "libx264" : "h264_nvenc") << '\n';

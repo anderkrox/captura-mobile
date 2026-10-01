@@ -213,12 +213,23 @@ public:
     }
 
     void Write(std::span<const std::uint8_t> bgra) {
+        DWORD exit_code{};
+        if (process_ == nullptr ||
+            (GetExitCodeProcess(process_, &exit_code) && exit_code != STILL_ACTIVE)) {
+            throw std::runtime_error(
+                "FFmpeg encerrou inesperadamente" +
+                (process_ != nullptr ? " com codigo " + std::to_string(exit_code) : std::string{}) + ".");
+        }
         const auto* data = bgra.data();
         std::size_t remaining = bgra.size();
         while (remaining > 0) {
             DWORD written{};
             const DWORD chunk = static_cast<DWORD>(std::min<std::size_t>(remaining, 1U << 20U));
             if (!WriteFile(stdin_write_, data, chunk, &written, nullptr) || written == 0) {
+                DWORD code{};
+                if (process_ != nullptr && GetExitCodeProcess(process_, &code) && code != STILL_ACTIVE) {
+                    throw std::runtime_error("FFmpeg encerrou inesperadamente com codigo " + std::to_string(code) + ".");
+                }
                 throw std::runtime_error("Falha escrevendo quadro no pipe do FFmpeg.");
             }
             data += written;
@@ -306,6 +317,47 @@ double VerifyOutput(const fs::path& ffprobe, const fs::path& output,
     return duration;
 }
 
+std::uint64_t ProbeFrameCount(const fs::path& ffprobe, const fs::path& input) {
+    std::wstringstream args;
+    args << L"-v error -count_frames -select_streams v:0 -show_entries stream=nb_read_frames "
+            L"-of default=noprint_wrappers=1:nokey=1 "
+         << QuoteCommandArgument(input.wstring());
+    const auto result = RunProcessCapture(ffprobe, args.str(), 30000);
+    if (result.exit_code != 0) {
+        throw std::runtime_error("FFprobe nao conseguiu ler a gravacao temporaria: " + result.output);
+    }
+    return detail::ParseRecoveryFrameCount(result.output);
+}
+
+void EnsureOutputWritable(const fs::path& output, const fs::path& temporary) {
+    const fs::path directory = output.parent_path().empty() ? fs::current_path() : output.parent_path();
+    fs::create_directories(directory);
+    if (!fs::is_directory(directory)) {
+        throw std::runtime_error("A pasta de destino nao e um diretorio valido.");
+    }
+    if (fs::exists(output)) {
+        throw std::runtime_error("O arquivo de saida ja existe; escolha um nome unico.");
+    }
+    if (fs::exists(temporary)) {
+        throw std::runtime_error("Ja existe uma gravacao temporaria com esse nome; ela foi preservada.");
+    }
+
+    std::error_code space_error;
+    const auto space = fs::space(directory, space_error);
+    if (!space_error) detail::ValidateAvailableRecordingSpace(space.available, true);
+
+    const fs::path probe = directory /
+        (L".yourots-write-probe-" + std::to_wstring(GetCurrentProcessId()) + L".tmp");
+    HANDLE handle = CreateFileW(
+        probe.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW,
+        FILE_ATTRIBUTE_TEMPORARY | FILE_FLAG_DELETE_ON_CLOSE, nullptr);
+    if (handle == INVALID_HANDLE_VALUE) {
+        throw std::runtime_error(
+            "Sem permissao para gravar na pasta de destino. Win32=" + std::to_string(GetLastError()));
+    }
+    CloseHandle(handle);
+}
+
 } // namespace
 
 struct Recorder::Impl {
@@ -342,18 +394,16 @@ struct Recorder::Impl {
             if (!latest || latest->bgra.empty()) {
                 throw std::runtime_error("A captura nao possui um quadro inicial para gravar.");
             }
-            base_width = latest->width;
-            base_height = latest->height;
             ResolveCrop(options.crop, base_width, base_height);
 
             std::uint64_t last_sequence = 0;
             std::shared_ptr<const std::vector<std::uint8_t>> current_pixels;
             auto update_pixels = [&](const std::shared_ptr<const PreviewFrame>& frame) {
                 if (!frame || frame->bgra.empty()) {
-                    return;
+                    return true;
                 }
                 if (frame->width != base_width || frame->height != base_height) {
-                    throw std::runtime_error("O tamanho do quadro mudou durante a gravacao.");
+                    return false;
                 }
                 if (frame->sequence != last_sequence) {
                     if (last_sequence != 0 && frame->sequence > last_sequence + 1) {
@@ -362,16 +412,19 @@ struct Recorder::Impl {
                     current_pixels = std::make_shared<const std::vector<std::uint8_t>>(detail::CropRecordingFrame(*frame, options.crop));
                     last_sequence = frame->sequence;
                 }
+                return true;
             };
 
-            update_pixels(latest);
+            if (!update_pixels(latest)) {
+                throw std::runtime_error("O quadro inicial mudou de tamanho durante a preparacao da gravacao.");
+            }
             if (!current_pixels) {
                 throw std::runtime_error("Nao foi possivel preparar o primeiro quadro recortado.");
             }
 
             const auto interval = std::chrono::duration<double>(1.0 / static_cast<double>(options.fps));
             std::uint64_t index = 0;
-            start_time = Clock::now();
+            auto next_tick = Clock::now();
             for (;;) {
                 if (stop_requested.load()) {
                     break;
@@ -380,27 +433,30 @@ struct Recorder::Impl {
                 if (!IsWindow(capture->SourceWindow())) {
                     throw std::runtime_error("A janela fonte foi fechada.");
                 }
+                if (IsIconic(capture->SourceWindow())) {
+                    paused.store(true);
+                }
+                if (paused.load()) {
+                    std::unique_lock lock(wait_mutex);
+                    wait_cv.wait(lock, [&] { return stop_requested.load() || !paused.load(); });
+                    next_tick = Clock::now();
+                    continue;
+                }
                 const auto capture_error = capture->LastError();
                 if (!capture_error.empty()) {
                     throw std::runtime_error(capture_error);
                 }
-                update_pixels(capture->LatestFrame());
+                if (!update_pixels(capture->LatestFrame())) {
+                    paused.store(true);
+                    continue;
+                }
                 PushPacket(detail::FramePacket{index, current_pixels});
                 ++index;
                 timeline_frames.store(index);
 
-                const auto next = start_time + std::chrono::duration_cast<Clock::duration>(interval * index);
+                next_tick += std::chrono::duration_cast<Clock::duration>(interval);
                 std::unique_lock lock(wait_mutex);
-                wait_cv.wait_until(lock, next, [&] { return stop_requested.load(); });
-            }
-
-            const auto elapsed = Clock::now() - start_time;
-            const auto elapsed_seconds = std::chrono::duration<double>(elapsed).count();
-            const auto target = static_cast<std::uint64_t>(std::ceil(elapsed_seconds * options.fps));
-            if (target > index && current_pixels) {
-                PushPacket(detail::FramePacket{target - 1, current_pixels});
-                index = target;
-                timeline_frames.store(index);
+                wait_cv.wait_until(lock, next_tick, [&] { return stop_requested.load() || paused.load(); });
             }
         } catch (const std::exception& ex) {
             SetError(ex.what());
@@ -417,6 +473,7 @@ struct Recorder::Impl {
     void WriterLoop() noexcept {
         try {
             detail::FrameTimeline timeline;
+            std::uint64_t last_space_check{};
             for (;;) {
                 detail::FramePacket packet;
                 {
@@ -430,6 +487,14 @@ struct Recorder::Impl {
 
                 timeline.Write(packet, [&](auto pixels) { ffmpeg->Write(pixels); });
                 frames_written = timeline.FramesWritten();
+                if (frames_written >= last_space_check + static_cast<std::uint64_t>(options.fps)) {
+                    last_space_check = frames_written;
+                    const auto directory = options.output_path.parent_path().empty()
+                        ? fs::current_path() : options.output_path.parent_path();
+                    std::error_code space_error;
+                    const auto space = fs::space(directory, space_error);
+                    if (!space_error) detail::ValidateAvailableRecordingSpace(space.available, false);
+                }
             }
             ffmpeg->Finish();
         } catch (const std::exception& ex) {
@@ -448,13 +513,12 @@ struct Recorder::Impl {
     std::thread writer_thread;
     std::atomic_bool recording{false};
     std::atomic_bool stop_requested{false};
+    std::atomic_bool paused{false};
     std::atomic<std::uint64_t> timeline_frames{0};
     std::uint64_t frames_written{};
     std::uint64_t source_frames_skipped{};
     std::uint32_t base_width{};
     std::uint32_t base_height{};
-    Clock::time_point start_time{};
-
     mutable std::mutex error_mutex;
     std::string error;
     std::mutex queue_mutex;
@@ -512,11 +576,15 @@ void Recorder::Start() {
 
         impl_->temporary_mkv = impl_->options.output_path;
         impl_->temporary_mkv.replace_extension(L".recording.mkv");
+        EnsureOutputWritable(impl_->options.output_path, impl_->temporary_mkv);
         impl_->stop_requested.store(false);
+        impl_->paused.store(false);
         impl_->sampling_done = false;
         impl_->timeline_frames.store(0);
         impl_->frames_written = 0;
         impl_->source_frames_skipped = 0;
+        impl_->base_width = initial->width;
+        impl_->base_height = initial->height;
         impl_->queue.Clear();
         {
             std::scoped_lock lock(impl_->error_mutex);
@@ -544,9 +612,49 @@ void Recorder::Start() {
     }
 }
 
+void Recorder::Pause() {
+    if (!impl_ || !impl_->recording.load()) {
+        throw std::runtime_error("Nao ha gravacao em andamento para pausar.");
+    }
+    impl_->paused.store(true);
+    impl_->wait_cv.notify_all();
+}
+
+void Recorder::Resume() {
+    if (!impl_ || !impl_->recording.load()) {
+        throw std::runtime_error("Nao ha gravacao em andamento para retomar.");
+    }
+    if (const auto error = impl_->Error(); !error.empty()) {
+        throw std::runtime_error(error);
+    }
+    if (!IsWindow(impl_->capture->SourceWindow()) || IsIconic(impl_->capture->SourceWindow())) {
+        throw std::runtime_error("A janela fonte precisa estar aberta e restaurada para retomar.");
+    }
+    if (const auto error = impl_->capture->LastError(); !error.empty()) {
+        throw std::runtime_error(error);
+    }
+    const auto latest = impl_->capture->LatestFrame();
+    if (!latest || latest->bgra.empty()) {
+        throw std::runtime_error("A captura nao possui um quadro valido para retomar.");
+    }
+    if (impl_->base_width != 0 &&
+        (latest->width != impl_->base_width || latest->height != impl_->base_height)) {
+        throw std::runtime_error("O tamanho da fonte mudou; finalize esta gravacao e recalibre antes de iniciar outra.");
+    }
+    ResolveCrop(impl_->options.crop, latest->width, latest->height);
+    impl_->paused.store(false);
+    impl_->wait_cv.notify_all();
+}
+
 RecorderResult Recorder::Stop() {
     if (!impl_->recording.exchange(false)) {
         throw std::runtime_error("Nao ha gravacao em andamento.");
+    }
+    // The sampler may be waiting in Pause, or UI polling may stop before its next tick.
+    if (!IsWindow(impl_->capture->SourceWindow())) {
+        impl_->SetError("A janela fonte foi fechada.");
+    } else if (const auto error = impl_->capture->LastError(); !error.empty()) {
+        impl_->SetError(error);
     }
     impl_->stop_requested.store(true);
     impl_->wait_cv.notify_all();
@@ -588,8 +696,47 @@ bool Recorder::IsRecording() const noexcept {
     return impl_ && impl_->recording.load();
 }
 
+bool Recorder::IsPaused() const noexcept {
+    return impl_ && impl_->recording.load() && impl_->paused.load();
+}
+
+double Recorder::RecordedDurationSeconds() const noexcept {
+    if (!impl_ || impl_->options.fps <= 0) {
+        return 0.0;
+    }
+    return static_cast<double>(impl_->timeline_frames.load()) / static_cast<double>(impl_->options.fps);
+}
+
+fs::path Recorder::TemporaryPath() const {
+    return impl_ ? impl_->temporary_mkv : fs::path{};
+}
+
 std::string Recorder::LastError() const {
     return impl_ ? impl_->Error() : std::string{};
+}
+
+RecorderResult RecoverTemporaryRecording(
+    const fs::path& ffmpeg_path,
+    const fs::path& ffprobe_path,
+    const fs::path& temporary_mkv_path,
+    const fs::path& output_path,
+    int fps) {
+    detail::ValidateRecorderSettings(fps, 1, output_path);
+    if (!fs::is_regular_file(ffmpeg_path) || !fs::is_regular_file(ffprobe_path)) {
+        throw std::runtime_error("FFmpeg/FFprobe nao estao disponiveis para recuperar a gravacao.");
+    }
+    if (!fs::is_regular_file(temporary_mkv_path) || fs::file_size(temporary_mkv_path) == 0) {
+        throw std::runtime_error("A gravacao temporaria nao existe ou esta vazia.");
+    }
+    auto recovery_probe = output_path;
+    recovery_probe.replace_extension(L".recovery-probe.tmp");
+    EnsureOutputWritable(output_path, recovery_probe);
+    const auto frames = ProbeFrameCount(ffprobe_path, temporary_mkv_path);
+    RemuxToMp4(ffmpeg_path, temporary_mkv_path, output_path);
+    const double duration = VerifyOutput(ffprobe_path, output_path, frames, fps);
+    std::error_code ignored;
+    fs::remove(temporary_mkv_path, ignored);
+    return RecorderResult{output_path, temporary_mkv_path, L"recuperado", frames, 0, 0, duration};
 }
 
 } // namespace yourots

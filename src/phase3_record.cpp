@@ -202,6 +202,9 @@ int wmain(int argc, wchar_t** argv) {
         std::cout << "recording_started=true" << std::endl;
         const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(options.seconds);
         while (std::chrono::steady_clock::now() < deadline && recorder.LastError().empty()) {
+            if (recorder.IsPaused()) {
+                throw std::runtime_error("A fonte foi minimizada ou redimensionada; a gravacao foi pausada e o MKV preservado.");
+            }
             std::this_thread::sleep_for(10ms);
         }
         const auto result = recorder.Stop();

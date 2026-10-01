@@ -72,6 +72,10 @@ class ProcessTree:
 
 
 def execute(args, name, command, *, environment, success=True, message=None, executable=None):
+    if '--output' in command:
+        path = Path(command[command.index('--output') + 1])
+        if path.is_file(): path.unlink()
+        path.with_suffix('.recording.mkv').unlink(missing_ok=True)
     with ProcessTree([str(executable or args.app), *map(str, command)], env=environment,
                      stdout=subprocess.PIPE, stderr=subprocess.PIPE, cwd=args.app.parent) as process:
         output, error = process.communicate(timeout=30)
@@ -247,6 +251,8 @@ def main():
                 for mode in ('cycles', 'pressure', 'recovery', 'destructor'):
                     tool_mode = {'cycles': 'cpu', 'pressure': 'slow_cpu', 'recovery': 'encoder_exit', 'destructor': 'cpu'}[mode]
                     path = args.artifacts / f'lifecycle-{mode}.mp4'
+                    path.unlink(missing_ok=True)
+                    path.with_suffix('.recording.mkv').unlink(missing_ok=True)
                     diag = execute(args, f'lifecycle_{mode}', [str(source.hwnd), args.tool_fixture,
                         args.ffprobe, path, mode], environment={**env, 'YOUROTS_TEST_TOOL_MODE': tool_mode},
                         executable=args.lifecycle)
@@ -285,9 +291,9 @@ def main():
                 blocked = args.artifacts / 'blocked.mp4'
                 blocked.mkdir(exist_ok=True)
                 execute(args, 'output_is_directory', [*base, '--output', blocked, '--seconds', '1'],
-                        environment=env, success=False, message='Falha ao gerar MP4')
-                require(blocked.with_suffix('.recording.mkv').stat().st_size > 0, 'Falha de escrita perdeu MKV.')
-                passed('real_remux_write_failure_preserves_mkv')
+                        environment=env, success=False, message='arquivo de saida ja existe')
+                require(not blocked.with_suffix('.recording.mkv').exists(), 'Destino invalido criou MKV.')
+                passed('existing_destination_directory_rejected_before_recording')
             with SourceWindow(args.fixture, static=True) as source:
                 path = args.artifacts / 'static.mp4'
                 diag = execute(args, 'static', ['--hwnd', str(source.hwnd), '--crop', CROP, *tools,

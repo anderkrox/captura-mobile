@@ -102,6 +102,8 @@ int wmain(int argc, wchar_t** argv) {
             Require(value(L"-framerate") == L"30" && value(L"-i") == L"pipe:0");
             Require(value(L"-c:v") == encoder && args.back() == output.wstring());
             Require(std::find(args.begin(), args.end(), L"-an") != args.end());
+            Require(std::find(args.begin(), args.end(), L"-n") != args.end());
+            Require(std::find(args.begin(), args.end(), L"-y") == args.end());
             Require(args[args.size() - 2] == L"matroska");
             Require(value(L"-vf") == L"scale=1080:1920:flags=lanczos:out_color_matrix=bt709:out_range=tv,"
                 L"setsar=1,format=yuv420p,setparams=range=limited:color_primaries=bt709:color_trc=bt709:colorspace=bt709");
@@ -123,6 +125,8 @@ int wmain(int argc, wchar_t** argv) {
         Require(value(L"-movflags") == L"+faststart" && value(L"-video_track_timescale") == L"15360");
         Require(value(L"-bsf:v") == L"setts=prescale=1:pts=round(PTS/512)*512:dts=round(DTS/512)*512:duration=512:time_base=1/15360");
         Require(std::find(args.begin(),args.end(),L"-an") != args.end());
+        Require(std::find(args.begin(),args.end(),L"-n") != args.end());
+        Require(std::find(args.begin(),args.end(),L"-y") == args.end());
     }});
     tests.push_back({"reject_invalid_encoding_preset", [] {
         Reject([] { EncodingArguments(L"v.mkv",0,864,30,L"libx264"); });

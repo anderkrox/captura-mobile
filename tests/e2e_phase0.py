@@ -90,7 +90,7 @@ def test_application(app: Path) -> list[dict]:
                 require(len(windows) == 1, 'A janela principal nao foi criada de forma unica.')
                 title = ctypes.create_unicode_buffer(128)
                 user32.GetWindowTextW(windows[0], title, len(title))
-                require(title.value == 'Yourots Capture - Calibracao', f'Titulo inesperado: {title.value}')
+                require(title.value == 'Yourots Capture', f'Titulo inesperado: {title.value}')
                 response = ctypes.c_size_t()
                 require(
                     bool(user32.SendMessageTimeoutW(windows[0], 0, 0, 0, 2, 2000, ctypes.byref(response))),

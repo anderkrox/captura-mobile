@@ -10,6 +10,29 @@
 
 namespace yourots::detail {
 
+std::uint64_t ParseRecoveryFrameCount(std::string_view output) {
+    const auto first = output.find_first_not_of(" \t\r\n");
+    if (first == std::string_view::npos) {
+        throw std::invalid_argument("A gravacao temporaria nao possui quadros recuperaveis.");
+    }
+    output = output.substr(first, output.find_last_not_of(" \t\r\n") - first + 1);
+    std::uint64_t frames{};
+    const auto parsed = std::from_chars(output.data(), output.data() + output.size(), frames);
+    if (parsed.ec != std::errc{} || parsed.ptr != output.data() + output.size() || frames == 0) {
+        throw std::invalid_argument("A quantidade de quadros da gravacao temporaria e invalida.");
+    }
+    return frames;
+}
+
+void ValidateAvailableRecordingSpace(std::uintmax_t bytes, bool starting) {
+    const auto minimum = (starting ? 64ULL : 32ULL) * 1024ULL * 1024ULL;
+    if (bytes < minimum) {
+        throw std::runtime_error(starting
+            ? "Espaco livre insuficiente na pasta de destino (menos de 64 MiB)."
+            : "Espaco livre insuficiente para continuar a gravacao.");
+    }
+}
+
 void ValidateRecorderSettings(int fps, std::size_t capacity, const std::filesystem::path& output) {
     if (fps != 30) {
         throw std::invalid_argument("A Fase 3 habilita somente o preset validado de 30 FPS.");
@@ -50,7 +73,7 @@ std::wstring EncodingArguments(const std::filesystem::path& mkv, std::uint32_t w
         throw std::invalid_argument("Preset de codificacao invalido.");
     }
     std::wstringstream args;
-    args << L"-hide_banner -loglevel error -y "
+    args << L"-hide_banner -loglevel error -n "
          << L"-f rawvideo -pixel_format bgra -video_size " << width << L'x' << height
          << L" -framerate " << fps << L" -i pipe:0 "
          << L"-vf scale=1080:1920:flags=lanczos:out_color_matrix=bt709:out_range=tv,"
@@ -65,7 +88,7 @@ std::wstring EncodingArguments(const std::filesystem::path& mkv, std::uint32_t w
 std::wstring RemuxArguments(const std::filesystem::path& mkv, const std::filesystem::path& mp4) {
     // MKV rounds timestamps to milliseconds. Snap PTS/DTS back to the 30 FPS grid
     // in a timebase with exactly 512 ticks/frame, preserving B-frame ordering.
-    return L"-hide_banner -loglevel error -y -i " + QuoteCommandArgument(mkv.wstring()) +
+    return L"-hide_banner -loglevel error -n -i " + QuoteCommandArgument(mkv.wstring()) +
         L" -map 0:v:0 -c:v copy -an "
         L"-bsf:v setts=prescale=1:pts=round(PTS/512)*512:dts=round(DTS/512)*512:duration=512:time_base=1/15360 "
         L"-video_track_timescale 15360 -movflags +faststart " + QuoteCommandArgument(mp4.wstring());

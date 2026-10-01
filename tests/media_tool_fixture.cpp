@@ -4,6 +4,8 @@
 #include <io.h>
 
 #include <iostream>
+#include <filesystem>
+#include <fstream>
 #include <string>
 #include <string_view>
 
@@ -13,12 +15,21 @@ std::wstring Environment(const wchar_t* name) {
     const auto count = GetEnvironmentVariableW(name,value,32768);
     return count > 0 && count < 32768 ? std::wstring(value,count) : std::wstring{};
 }
+std::wstring Mode() {
+    const auto path = Environment(L"YOUROTS_TEST_TOOL_MODE_FILE");
+    if (!path.empty()) {
+        std::ifstream file{std::filesystem::path(path)};
+        std::string value; std::getline(file, value);
+        if (!value.empty()) return {value.begin(), value.end()};
+    }
+    return Environment(L"YOUROTS_TEST_TOOL_MODE");
+}
 }
 
 // Inject failures/delay around the actual FFmpeg/FFprobe, preserving real video encoding.
 int wmain(int argc, wchar_t** argv) {
     _setmode(_fileno(stdout),_O_BINARY);
-    const auto mode = Environment(L"YOUROTS_TEST_TOOL_MODE");
+    const auto mode = Mode();
     bool probe{}, nvenc{}, raw{}, remux{}, audio{};
     for (int i = 1; i < argc; ++i) {
         const std::wstring_view arg = argv[i];
@@ -72,7 +83,20 @@ int wmain(int argc, wchar_t** argv) {
         }
         std::cout << output;
     }
-    const auto wait = WaitForSingleObject(process.hProcess,90000);
+    DWORD wait{};
+    if (raw && !probe) {
+        const auto deadline = GetTickCount64() + 90000;
+        while ((wait = WaitForSingleObject(process.hProcess, 40)) == WAIT_TIMEOUT && GetTickCount64() < deadline) {
+            if (Mode() == L"encoder_abort") {
+                TerminateProcess(process.hProcess, 9);
+                WaitForSingleObject(process.hProcess, 5000);
+                CloseHandle(process.hProcess);
+                std::cerr << "Injected running encoder exit\n"; return 9;
+            }
+        }
+    } else {
+        wait = WaitForSingleObject(process.hProcess,90000);
+    }
     if (wait != WAIT_OBJECT_0) { TerminateProcess(process.hProcess,22); WaitForSingleObject(process.hProcess,5000); }
     DWORD code{}; GetExitCodeProcess(process.hProcess,&code); CloseHandle(process.hProcess);
     return static_cast<int>(code);

@@ -35,6 +35,7 @@ user32.ShowWindow.argtypes = (wintypes.HWND, ctypes.c_int)
 user32.GetDC.argtypes = (wintypes.HWND,)
 user32.GetDC.restype = wintypes.HDC
 user32.ReleaseDC.argtypes = (wintypes.HWND, wintypes.HDC)
+user32.PrintWindow.argtypes = (wintypes.HWND, wintypes.HDC, wintypes.UINT)
 gdi32.CreateCompatibleDC.argtypes = (wintypes.HDC,)
 gdi32.CreateCompatibleDC.restype = wintypes.HDC
 gdi32.CreateCompatibleBitmap.argtypes = (wintypes.HDC, ctypes.c_int, ctypes.c_int)
@@ -83,8 +84,9 @@ def wait_for(predicate, message: str, *, timeout: float = 8) -> None:
 
 
 class Application:
-    def __init__(self, app: Path, local: Path):
+    def __init__(self, app: Path, local: Path, *, environment=None):
         self.app, self.local = app, local
+        self.environment = environment or os.environ
         self.process = None
         self.hwnd = None
 
@@ -93,8 +95,10 @@ class Application:
         startup.dwFlags = subprocess.STARTF_USESHOWWINDOW
         startup.wShowWindow = 4  # SW_SHOWNOACTIVATE
         self.process = subprocess.Popen([str(self.app)], startupinfo=startup,
-            env={**os.environ, 'LOCALAPPDATA': str(self.local)}, cwd=self.app.parent)
+            env={**self.environment, 'LOCALAPPDATA': str(self.local)}, cwd=self.app.parent)
         try:
+            require(user32.WaitForInputIdle(wintypes.HANDLE(self.process._handle), 5000) == 0,
+                    'Aplicativo nao concluiu a inicializacao antes da automacao.')
             @CALLBACK
             def collect(hwnd, _):
                 pid = wintypes.DWORD()
@@ -112,7 +116,7 @@ class Application:
                 return self.hwnd is not None
 
             wait_for(find, 'Janela principal ausente.')
-            require(text(self.hwnd) == 'Yourots Capture - Calibracao', 'Titulo inesperado.')
+            require(text(self.hwnd) == 'Yourots Capture', 'Titulo inesperado.')
             require(user32.SetWindowPos(self.hwnd, None, 650, 100, 1240, 820, 0x0010),
                     'Posicionamento da interface falhou.')
             send(self.hwnd, 0)
@@ -190,7 +194,7 @@ class Application:
     def preview_geometry(self, frame_width=600, frame_height=964):
         rect = wintypes.RECT()
         require(user32.GetClientRect(self.hwnd, ctypes.byref(rect)), 'GetClientRect falhou.')
-        right = max(620, rect.right - 316) - 16
+        right = max(620, rect.right - 376) - 16
         bottom = max(120, rect.bottom - 16)
         scale = min((right - 16) / frame_width, (bottom - 72) / frame_height)
         width, height = int(frame_width * scale), int(frame_height * scale)
@@ -209,7 +213,9 @@ class Application:
             bitmap = gdi32.CreateCompatibleBitmap(dc, width, height)
             require(bitmap, 'CreateCompatibleBitmap falhou.')
             previous = gdi32.SelectObject(memory, bitmap)
-            require(gdi32.BitBlt(memory, 0, 0, width, height, dc, 0, 0, 0x00CC0020), 'BitBlt falhou.')
+            # Ask the UI thread to paint a complete snapshot into our bitmap.
+            # Reading the screen DC can catch the preview between FillRect/StretchDIBits.
+            require(user32.PrintWindow(self.hwnd, memory, 1), 'PrintWindow falhou.')
             gdi32.SelectObject(memory, previous)
             previous = None
             info = struct.pack('<IiiHHIIiiII', 40, width, -height, 1, 32, 0, width * height * 4, 0, 0, 0, 0)

@@ -1,4 +1,4 @@
-# Testes das Fases 0, 1, 2 e 3
+# Testes das Fases 0, 1, 2, 3 e 4
 
 Os testes usam CTest, Python 3.10 ou superior e Pester 3.4.0, disponível neste
 computador pelo Windows PowerShell. Não é necessário baixar bibliotecas de
@@ -88,6 +88,20 @@ Não baixam pacotes nem executam os encoders reais.
 `RecorderTests` não usa GPU nem processos externos. O relatório JUnit fica em
 `recorder.xml`. A cadência usa o relógio real no E2E; os unitários conferem
 as posições da linha do tempo sem esperas que dependam do escalonador.
+
+`application_controls_tests.cpp` contém 87 casos sobre as regras de produção
+extraídas para `ApplicationControls` e sobre as verificações de recuperação:
+
+- Parsing e canonicalização de atalhos, F1–F24, aliases e duplicidades.
+- Estados, habilitação dos controles, fonte indisponível e calibração inválida.
+- Contador de duração, viradas de minuto/hora e rejeição de NaN/infinito.
+- Preferências UTF-16/Unicode, substituição, defaults, corrupção e falha de escrita.
+- Nomes determinísticos e colisões com MP4/MKV, preservando os arquivos anteriores.
+- Quantidade de quadros recuperáveis, sinais, overflow e respostas ambíguas.
+- Limiares de espaço de 64 MiB para iniciar e 32 MiB para continuar.
+
+`ApplicationControlsTests` não usa GPU nem processos externos. O relatório
+JUnit fica em `application-controls.xml`.
 
 ## E2E da Fase 0
 
@@ -216,12 +230,64 @@ serializados pelo CTest; execute as configurações uma após a outra. Não é
 necessário abrir o Edge ou o jogo. A inicialização NVENC real é tentada, mas
 sua codificação só pode ser validada quando o driver permite o probe.
 
+## E2E da Fase 4
+
+`e2e_phase4.py` opera a interface de produção, os botões e atalhos globais
+registrados pelo Windows. Usa uma cópia temporária do aplicativo com proxies
+de teste de FFmpeg/FFprobe; captura WGC/D3D11 e codificação `libx264` são reais.
+O `LOCALAPPDATA` e as preferências ficam isolados, e Job Objects encerram os
+processos criados, inclusive os encoders. As gravações e screenshots ficam
+na pasta de artefatos do CTest.
+
+O teste confere início condicionado à calibração, estados e controles bloqueados;
+pausas repetidas com contador congelado e intervalos ausentes do MP4; entrada
+inválida, duplicidade, conflito externo e restauração dos atalhos anteriores;
+eventos reais de teclado; persistência e liberação de registros ao reiniciar;
+minimização/restauração e redimensionamento; recusa/confirmação do fechamento;
+falhas de encoder/remux/probe/áudio/metadados; MKV preservado, tentativa de
+recuperação recusada e recuperação validada; destino inválido, negação real de
+permissão por ACL temporária e fechamento da fonte durante uma pausa.
+
+FFprobe, timestamps dos pacotes, decodificação completa e pixels dos quatro
+cantos conferem MP4 H.264, 1080 × 1920, 30 FPS, BT.709, `yuv420p`, `faststart`
+e ausência de áudio. Hashes verificam que falhas e recuperação preservam os
+arquivos anteriores. A ACL de teste é removida antes da limpeza.
+
+Uma colisão criada após iniciar a gravação também é exercitada: o FFmpeg usa
+`-n`, recusa sobrescrever o MP4 existente e mantém o MKV para recuperar com
+outro nome. Se o encoder morrer antes de descarregar seus buffers, o temporário
+pode estar vazio; nesse caso a recuperação informa o erro e mantém o arquivo.
+
+O E2E de calibração também verifica a restauração automática com uma nova
+instância da fonte. No Windows 10 observado, `CreateForWindow` recusou a primeira
+ativação de uma janela válida com `E_INVALIDARG`; a captura agora faz até quatro
+novas tentativas com intervalos de 100, 200, 400 e 800 ms enquanto a fonte permanece visível e disponível.
+Erros definitivos incluem a operação e o HRESULT. Os testes esperam a
+inicialização das janelas e a apresentação do DWM antes de automatizar a captura.
+O encerramento da captura revoga eventos e fecha o pool sem manter o mutex dos
+callbacks; uma barreira aguarda o processamento em andamento, evitando bloqueio
+com callbacks pendentes. Os ciclos de captura e casos de calibração inválida
+exercitam esse encerramento.
+As screenshots usam `PrintWindow`/`WM_PRINTCLIENT` com a mesma rotina de pintura
+da prévia, para obter um quadro completo e evitar ler a tela entre a limpeza do
+fundo e o desenho da imagem.
+
+Os limiares de espaço são exercitados por unitários; o E2E não enche o disco.
+O seletor de pasta e a abertura do Explorer ainda exigem inspeção manual.
+Mudanças físicas de DPI, DevTools e o jogo continuam na Fase 5.
+
+```powershell
+ctest --preset release -R 'unit.application_controls|e2e.phase4'
+ctest --preset debug -R 'unit.application_controls|e2e.phase4'
+```
+
 Os resultados ficam em `build/vs2022-x64/test-results/<configuração>/`:
 
 - `unit.xml`: relatório NUnit dos testes unitários.
 - `capture-core.xml`: 50 testes do núcleo de captura, em JUnit XML.
 - `calibration.xml`: 87 testes de calibração, em JUnit XML.
 - `recorder.xml`: 84 testes do núcleo de gravação, em JUnit XML.
+- `application-controls.xml`: 87 testes dos controles e regras de falha, em JUnit XML.
 - `e2e/report.json`: resultado do E2E, encoder escolhido e diagnóstico NVENC.
 - `e2e/ffprobe.json`: metadados do MP4.
 - `e2e/recording.mkv` e `e2e/recording.mp4`: vídeo sintético preservado para inspeção.
@@ -233,12 +299,31 @@ Os resultados ficam em `build/vs2022-x64/test-results/<configuração>/`:
 - `e2e-phase3/report.json`: resultado dos grupos da gravação/exportação.
 - `e2e-phase3/*.log`, `*.mp4`, `*.ffprobe.json`: diagnósticos, vídeos e metadados.
 - `e2e-phase3/*.recording.mkv`: temporários preservados nos testes de falha/destruição.
+- `e2e-phase4/report.json`: cenários dos controles/atalhos/falhas e duração sem pausas.
+- `e2e-phase4/**/*.mp4`, `*.ffprobe.json` e `preview-phase4.bmp`: vídeos, metadados e prévia.
+- `e2e-phase4/**/*.recording.mkv`: temporários preservados ao interromper o encoder.
 - `ctest.xml`: resultado consolidado, quando usado `--output-junit`.
 
 Cada processo externo tem prazo de execução. Falhas retornam código diferente
 de zero e são reportadas pelo CTest; arquivos de vídeo úteis são preservados.
 
 ## Última execução
+
+Em 01/10/2026 às 18:35 (America/Sao_Paulo), builds Release e Debug x64
+aprovados. A suíte completa passou com 10/10 entradas CTest em cada
+configuração: 50 casos de captura, 87 de calibração, 84 de gravação, 87 dos
+controles e 14 de dependências (322 unitários), mais os E2E das Fases 0 a 4.
+Os 20 grupos da Fase 4 passaram nas duas configurações. Soma dos tempos:
+169,492 s em Release e 171,630 s em Debug. Nenhum processo de validação
+permaneceu em execução.
+
+O resumo versionado, incluindo hashes dos fontes e executáveis, está em
+[VALIDACAO_FASE4.json](../docs/VALIDACAO_FASE4.json). Relatórios completos,
+screenshots, vídeos e temporários ficam nas pastas de artefatos acima. Os E2E
+da Fase 4 usam `libx264`; a validação do jogo e demais limites descritos acima
+permanecem na Fase 5.
+
+## Histórico da Fase 3
 
 Em 01/10/2026 às 15:33 (America/Sao_Paulo), builds Release e Debug
 x64 aprovados. A suíte completa passou com 8/8 entradas CTest em cada

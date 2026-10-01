@@ -1,0 +1,236 @@
+{
+  "phase": 4,
+  "date": "2026-10-01",
+  "completed_at": "2026-10-01T18:35:33-03:00",
+  "timezone": "America/Sao_Paulo",
+  "base_commit": "a28a833b9f46745f49ade57f2d3f5ddf6538b85f",
+  "platform": "Windows-10-10.0.19045-SP0",
+  "verification": {
+    "release_build": "passed",
+    "debug_build": "passed",
+    "remaining_validation_processes": 0
+  },
+  "scope": "Production Win32 UI, WGC/D3D11, actual global hotkeys and real libx264 encoding; media proxies inject faults.",
+  "corrected_behaviors": [
+    "Closed source during Pause reports Error and preserves recoverable MKV.",
+    "Restoration waits for stable original dimensions and DPI before enabling Resume.",
+    "Preview polling preserves action and failure diagnostics.",
+    "FFmpeg -n prevents overwrites, including collisions after Start.",
+    "Recovery frame counts reject signs, zero, malformed values and overflow.",
+    "Recorder dimensions are initialized before worker threads start.",
+    "Transient CreateForWindow E_INVALIDARG on available sources has bounded retries and contextual diagnostics.",
+    "Capture shutdown revokes/closes outside the callback mutex to avoid deadlock with pending callbacks.",
+    "Native WM_PRINTCLIENT uses the production preview painter for complete UI snapshots."
+  ],
+  "limits": [
+    "Disk-space thresholds are unit tested at 64/32 MiB; no physical disk filling.",
+    "Folder chooser and Explorer opening need manual inspection.",
+    "Physical DPI changes, DevTools and the game remain Phase 5 work.",
+    "NVENC encoding requires a driver that passes the actual probe; Phase 4 forces the CPU fallback.",
+    "Abrupt encoder termination before buffer flushing can leave an empty MKV; recovery rejects it."
+  ],
+  "configurations": {
+    "Release": {
+      "ctest_entries": 10,
+      "failures": 0,
+      "test_time_seconds": 169.492,
+      "unit_cases": {
+        "capture-core": 50,
+        "calibration": 87,
+        "recorder": 84,
+        "application-controls": 87,
+        "ffmpeg-setup": 14
+      },
+      "unit_total": 322,
+      "e2e": {
+        "phase0": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Release/e2e/report.json"
+        },
+        "phase1": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Release/e2e-phase1/report.json",
+          "case_count": 9
+        },
+        "phase2": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Release/e2e-phase2/report.json",
+          "case_count": 19
+        },
+        "phase3": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Release/e2e-phase3/report.json",
+          "case_count": 21
+        },
+        "phase4": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Release/e2e-phase4/report.json",
+          "case_count": 20,
+          "scope": "phase4_real_ui_global_hotkeys_wgc_and_media",
+          "cases": [
+            "ready_destination_and_start_requires_calibration",
+            "buttons_repeated_pause_frozen_counter_and_mp4_excludes_pauses",
+            "invalid_and_duplicate_hotkeys_preserve_preferences",
+            "external_hotkey_conflict_rolls_back_and_real_global_keys_control_recording",
+            "hotkeys_canonicalized_and_saved",
+            "minimize_auto_pause_restore_requires_explicit_resume",
+            "resize_auto_pause_blocks_resume_and_requires_recalibration",
+            "close_active_no_keeps_session_yes_finalizes_paused_session",
+            "restart_restores_preferences_and_releases_hotkeys",
+            "successive_sessions_have_distinct_output_names",
+            "destination_created_during_recording_is_preserved_and_mkv_recovers",
+            "remux_fail_preserves_mkv_and_validated_recovery",
+            "probe_fail_preserves_mkv_and_validated_recovery",
+            "unexpected_audio_preserves_mkv_and_validated_recovery",
+            "probe_nan_preserves_mkv_and_validated_recovery",
+            "encoder_abort_preserves_mkv_and_warns_on_close",
+            "invalid_destination_reports_error_and_preserves_existing_file",
+            "real_write_permission_denial_rejected_before_encoding",
+            "prior_recordings_unchanged_after_faults_and_recovery",
+            "source_closed_while_paused_is_error_with_validated_recovery"
+          ],
+          "pause_video": {
+            "frames": 67,
+            "duration_seconds": 2.233333,
+            "marker_centers": [
+              85.5,
+              85.5,
+              85.5
+            ],
+            "faststart": true,
+            "full_decode": true,
+            "four_corners": true,
+            "audio_streams": 0,
+            "wall_seconds": 5.294462300000305,
+            "file": "vídeos com ação 🎮\\Yourots_20261001_182959.mp4"
+          },
+          "encoder_abort_temporary_bytes": 0,
+          "process_tree_cleanup": "All application jobs closed, including FFmpeg descendants",
+          "disk_space_coverage": "64/32 MiB boundary unit tests; no disk filling",
+          "encoder": "libx264"
+        }
+      },
+      "application_sha256": "d9513f4fc339dc9ab13abf5e634ab525d8b332a356aa10eabbe5906062feb462"
+    },
+    "Debug": {
+      "ctest_entries": 10,
+      "failures": 0,
+      "test_time_seconds": 171.63,
+      "unit_cases": {
+        "capture-core": 50,
+        "calibration": 87,
+        "recorder": 84,
+        "application-controls": 87,
+        "ffmpeg-setup": 14
+      },
+      "unit_total": 322,
+      "e2e": {
+        "phase0": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Debug/e2e/report.json"
+        },
+        "phase1": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Debug/e2e-phase1/report.json",
+          "case_count": 9
+        },
+        "phase2": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Debug/e2e-phase2/report.json",
+          "case_count": 19
+        },
+        "phase3": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Debug/e2e-phase3/report.json",
+          "case_count": 21
+        },
+        "phase4": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Debug/e2e-phase4/report.json",
+          "case_count": 20,
+          "scope": "phase4_real_ui_global_hotkeys_wgc_and_media",
+          "cases": [
+            "ready_destination_and_start_requires_calibration",
+            "buttons_repeated_pause_frozen_counter_and_mp4_excludes_pauses",
+            "invalid_and_duplicate_hotkeys_preserve_preferences",
+            "external_hotkey_conflict_rolls_back_and_real_global_keys_control_recording",
+            "hotkeys_canonicalized_and_saved",
+            "minimize_auto_pause_restore_requires_explicit_resume",
+            "resize_auto_pause_blocks_resume_and_requires_recalibration",
+            "close_active_no_keeps_session_yes_finalizes_paused_session",
+            "restart_restores_preferences_and_releases_hotkeys",
+            "successive_sessions_have_distinct_output_names",
+            "destination_created_during_recording_is_preserved_and_mkv_recovers",
+            "remux_fail_preserves_mkv_and_validated_recovery",
+            "probe_fail_preserves_mkv_and_validated_recovery",
+            "unexpected_audio_preserves_mkv_and_validated_recovery",
+            "probe_nan_preserves_mkv_and_validated_recovery",
+            "encoder_abort_preserves_mkv_and_warns_on_close",
+            "invalid_destination_reports_error_and_preserves_existing_file",
+            "real_write_permission_denial_rejected_before_encoding",
+            "prior_recordings_unchanged_after_faults_and_recovery",
+            "source_closed_while_paused_is_error_with_validated_recovery"
+          ],
+          "pause_video": {
+            "frames": 68,
+            "duration_seconds": 2.266667,
+            "marker_centers": [
+              85.5,
+              85.5,
+              85.5
+            ],
+            "faststart": true,
+            "full_decode": true,
+            "four_corners": true,
+            "audio_streams": 0,
+            "wall_seconds": 5.359554799997568,
+            "file": "vídeos com ação 🎮\\Yourots_20261001_183426.mp4"
+          },
+          "encoder_abort_temporary_bytes": 0,
+          "process_tree_cleanup": "All application jobs closed, including FFmpeg descendants",
+          "disk_space_coverage": "64/32 MiB boundary unit tests; no disk filling",
+          "encoder": "libx264"
+        }
+      },
+      "application_sha256": "e85f7df160bbbb9fa21848591cdcf5f0ba6281b80ef0fb323ec28014f758fe1c"
+    }
+  },
+  "source_hash_method": "SHA-256 of source text with CRLF normalized to LF",
+  "source_sha256": {
+    "cmake/Dependencies.cmake": "6c7277365837aaa8c49c8cc15456273782d8658b307ebbf7fdc6830886323661",
+    "CMakeLists.txt": "0e9e055492a7b8501800e1fc5d13cf3d99d45992f98f406eb0a7903c4b2d6b1f",
+    "CMakePresets.json": "da2b4779445668af79df947d54190482a90e44348d2fa6951dabca9524a5aef8",
+    "scripts/check-ffmpeg.ps1": "2b189863fc49b5043c56290ba3ed881acb27b67c148b9f5aba1b4e536d4525e9",
+    "scripts/ffmpeg-functions.ps1": "6490bd42ec131f66ad98f568049d35d19e78f5e411468e3bcc0ffec50972c05f",
+    "scripts/setup-ffmpeg.ps1": "ffbeae90871f1ef161edee9e3998fbe613d360a8ead2cc84cf10c6a92482821b",
+    "src/application_controls.cpp": "7d73c8f6babca9ae11ce6305653074c49f040bb10179df966c795153e74d4ea9",
+    "src/application_controls.h": "1d5ef513291a36cd4c0b360dd9d1df7deeba5c42e2291c559c58fefe0a26fb26",
+    "src/calibration.cpp": "957d904e25370068b7dc95f178988dc2b9b9b5d12139f81534b9ded9d81ede54",
+    "src/calibration.h": "090643c8f53d367b96ec461fb4477747e4a8fcf62c620e4c4e4f2b1386ea5111",
+    "src/capture_core.cpp": "c1b1d556f5bd72cc023fd483f495328b9ff3e3cc1231b0578cb4fe127a64ee47",
+    "src/capture_core.h": "a30df101b655585cd21b263d922cc0d64cb6b5ca12cb9470a8b430d4332ee428",
+    "src/capture_preview.cpp": "513083ceee7d70ddd14bb0924a961ab4d165c6598d32713a2bf79219d42a0679",
+    "src/capture_preview.h": "b8129e6e0eda84d28904b97e4a2d5a70ac619427412b64e42a6ad3b42e346202",
+    "src/main.cpp": "04d8fccbb5523f26b99c9630083615b74b14bb13002b0db06ae32a20673afaff",
+    "src/phase1_poc.cpp": "cb9978396c31abcebb358e03c09da26dd4bfd3b35a71a92622e2bf6dbee29c5e",
+    "src/phase3_record.cpp": "da34bf22a7149d05c62eff6c4cd6c4e3e634ef8e205d5e27eae697e71221ce9d",
+    "src/recorder.cpp": "b0bc106b59d7bf3a8257dd28f18191a7b90f5543a6d10589342d1c66839e1e53",
+    "src/recorder.h": "4abf115cfb804409e53d2d6c67f1546e1b834b9f86667edc77280b33c5971645",
+    "src/recorder_core.cpp": "d83511fd2d533b23c38460129e18ab1f8be6111deb56c54f350cf7a00f169d6a",
+    "src/recorder_core.h": "2af6a34ebd05a2b3c49e17032b64d834e6dac56538fdb401ae98ef4ffff24438",
+    "tests/application_controls_tests.cpp": "c49a669f0e2d8ff2315b354e370787495c37547bd4b974abb0439d5fd0b4f288",
+    "tests/calibration_tests.cpp": "f90db3eaad1aaf0ce7121a99848de8317624976aff67bc212364ac920061249f",
+    "tests/capture_core_tests.cpp": "d119ec73ba47b20341427fe6dde2c94de15db0c7ffc2c79f512d34cda2aceb58",
+    "tests/capture_fixture.cpp": "a7e289dc1aae1e5d39d16f1aa205434d99dcdde75391c4579f441ae3888da0bb",
+    "tests/e2e_phase0.py": "8145116b5de420963ee283cb6b60c56e4ba123fcb1c839c50c5bc1822f610763",
+    "tests/e2e_phase1.py": "ec4961181136c9223729f65db8b939aef83ccb2e2eb817998c4efc85878e750d",
+    "tests/e2e_phase2.py": "85e7b5437670f2ad844e2665e6c9c1d8d3537d0e9aa02d52c543cfe37fd14693",
+    "tests/e2e_phase3.py": "30fe9d8b6b656c30e059f354542fa18c79b3f4652a8b76a982819b450a65f2cc",
+    "tests/e2e_phase4.py": "39dba1913d4486b74a978e73cb35c0e903f9c29dbfeba979b82e316a4cfb81f3",
+    "tests/media_tool_fixture.cpp": "3a81310d64a763484a35fbb8d7fd8928b5de2cda974098e652ef285bd7013113",
+    "tests/recorder_lifecycle_e2e.cpp": "7b380e66207a4257726c79501d4435a32d1ddb42b865d05c06121f990b9152a8",
+    "tests/recorder_tests.cpp": "0df7cff1dedd4920ec6a9cc4944b453f7087535ba13732a234d643902dabf210",
+    "tests/run-unit.ps1": "37294915e7c9b73b2236707167d6306645f20bb3f6a58cb7705cd80bbe7f08a2",
+    "tests/setup-ffmpeg.Tests.ps1": "73aed956f599f4277f54357bdb93a758d1cd9a27cebf68e643e6f52697888b09"
+  }
+}
