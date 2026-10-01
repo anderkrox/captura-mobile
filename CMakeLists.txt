@@ -24,7 +24,20 @@ add_executable(YourotsCapture WIN32
     src/main.cpp
 )
 
+add_executable(YourotsCapturePoc
+    src/phase1_poc.cpp
+)
+
 target_compile_definitions(YourotsCapture PRIVATE
+    UNICODE
+    _UNICODE
+    WIN32_LEAN_AND_MEAN
+    NOMINMAX
+    WINVER=0x0A00
+    _WIN32_WINNT=0x0A00
+)
+
+target_compile_definitions(YourotsCapturePoc PRIVATE
     UNICODE
     _UNICODE
     WIN32_LEAN_AND_MEAN
@@ -37,13 +50,29 @@ target_compile_options(YourotsCapture PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive- /EHsc /utf-8>
 )
 
+target_compile_options(YourotsCapturePoc PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive- /EHsc /utf-8>
+)
+
 target_link_libraries(YourotsCapture PRIVATE
     d3d11
     dxgi
     windowsapp
 )
 
+target_link_libraries(YourotsCapturePoc PRIVATE
+    d3d11
+    dxgi
+    shell32
+    windowsapp
+    windowscodecs
+)
+
 set_property(TARGET YourotsCapture PROPERTY
+    VS_GLOBAL_WindowsTargetPlatformVersion "10.0.26100.0"
+)
+
+set_property(TARGET YourotsCapturePoc PROPERTY
     VS_GLOBAL_WindowsTargetPlatformVersion "10.0.26100.0"
 )
 

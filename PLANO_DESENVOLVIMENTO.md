@@ -1,7 +1,7 @@
 # Plano de desenvolvimento — Captura Mobile do Yourots
 
 Data: 1 de outubro de 2026.
-Status: implementação iniciada; Fase 0 em andamento.
+Status: implementação iniciada; Fase 1 validada tecnicamente em 01/10/2026.
 
 ## 1. Objetivo
 
@@ -135,13 +135,49 @@ O uso de NVENC acelera a codificação. Esse desenho inicial não pressupõe que
 
 **Objetivo:** demonstrar que a captura nativa funciona no Edge e no Windows atuais.
 
-- [ ] Verificar suporte a Windows.Graphics.Capture na execução.
-- [ ] Selecionar a janela e criar a sessão de captura.
-- [ ] Implementar o recebimento de quadros fora da thread da interface.
-- [ ] Fazer seleção manual da região Mobile e produzir uma imagem do recorte.
-- [ ] Testar a captura com outra aplicação sobreposta ao navegador.
-- [ ] Verificar efeitos da borda de indicação de captura do Windows.
-- [ ] Produzir uma gravação curta para validar o fluxo até o encoder.
+- [x] Verificar suporte a Windows.Graphics.Capture na execução.
+- [x] Selecionar a janela e criar a sessão de captura.
+- [x] Implementar o recebimento de quadros fora da thread da interface.
+- [x] Fazer seleção manual da região Mobile e produzir uma imagem do recorte.
+- [x] Testar a captura com outra aplicação sobreposta ao navegador.
+- [x] Verificar efeitos da borda de indicação de captura do Windows.
+- [x] Produzir uma gravação curta para validar o fluxo até o encoder.
+
+**Validação em 01/10/2026:** foi criado o executável independente
+`YourotsCapturePoc`, mantendo a prova técnica separada da interface prevista
+para a Fase 2. No Windows 10 atual, `GraphicsCaptureSession::IsSupported()`
+retornou verdadeiro e a janela do Edge foi capturada por `HWND` através de
+`IGraphicsCaptureItemInterop`. O recebimento usa
+`Direct3D11CaptureFramePool::CreateFreeThreaded`, portanto não depende da thread
+da interface.
+
+O quadro nativo da janela foi recebido em 1920 × 1040. Pela imagem completa foi
+selecionado manualmente o retângulo físico `X=410, Y=176, W=486, H=864`. O PNG
+resultante mostra as quatro extremidades do Mobile, sem Console, barra de
+endereços, sombra externa ou barra de tarefas. O recorte foi salvo em
+`artifacts/phase1/mobile.png`.
+
+Para validar oclusão, a POC colocou uma janela magenta de 240 × 240 sobre o Edge
+durante a sessão. O quadro capturado nessa condição teve zero pixels magenta e
+foi salvo em `artifacts/phase1/mobile-overlay-probe.png`, confirmando que a
+janela sobreposta não é incorporada à textura capturada por janela.
+
+No Windows 10 atual, a propriedade `GraphicsCaptureSession.IsBorderRequired`
+não está disponível em tempo de execução. A borda amarela de indicação do
+Windows foi observada na área de trabalho durante a captura e registrada em
+`artifacts/phase1/desktop-during-capture.png`; ela não aparece no recorte nem no
+vídeo produzido pela sessão.
+
+A gravação experimental enviou 900 quadros BGRA ao FFmpeg em 30 FPS, repetindo
+o último quadro disponível quando necessário. O arquivo
+`artifacts/phase1/phase1-30s.mp4` foi validado com FFprobe: H.264, 1080 × 1920,
+`yuv420p`, 30 FPS, duração de 30,000 s e somente um stream de vídeo, sem faixa de
+áudio. Um quadro aos 15 s foi extraído para
+`artifacts/phase1/phase1-30s-frame15.png` e mantém o enquadramento integral.
+
+Limitação confirmada para esta POC: o recorte `410,176,486,864` é a calibração
+do layout, tamanho de janela e DPI atuais. Mudanças de tamanho, disposição do
+DevTools, zoom ou escala exigem nova calibração, que será tratada na Fase 2.
 
 **Entrega:** imagem de referência capturada e vídeo experimental de aproximadamente 30 segundos.
 
