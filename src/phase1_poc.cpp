@@ -1,4 +1,5 @@
 #include <windows.h>
+#include "capture_core.h"
 #include <shellapi.h>
 #include <wincodec.h>
 
@@ -21,6 +22,7 @@
 #include <iomanip>
 #include <iostream>
 #include <mutex>
+#include <memory>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -39,17 +41,9 @@ using winrt::Windows::Graphics::DirectX::DirectXPixelFormat;
 using winrt::Windows::Graphics::DirectX::Direct3D11::IDirect3DDevice;
 
 namespace {
-
-struct CropRect {
-    std::uint32_t x{};
-    std::uint32_t y{};
-    std::uint32_t width{};
-    std::uint32_t height{};
-
-    bool IsFullFrame() const noexcept {
-        return width == 0 || height == 0;
-    }
-};
+using yourots::CropRect;
+using yourots::ParseCrop;
+using yourots::QuoteCommandArgument;
 
 struct FrameBuffer {
     std::uint32_t width{};
@@ -181,43 +175,6 @@ HWND FindDefaultEdgeWindow() {
     return best;
 }
 
-std::wstring QuoteCommandArgument(const std::wstring& argument) {
-    if (argument.find_first_of(L" \t\"") == std::wstring::npos) {
-        return argument;
-    }
-    std::wstring result = L"\"";
-    std::size_t backslashes = 0;
-    for (const wchar_t character : argument) {
-        if (character == L'\\') {
-            ++backslashes;
-            continue;
-        }
-        if (character == L'\"') {
-            result.append(backslashes * 2 + 1, L'\\');
-            result.push_back(L'\"');
-            backslashes = 0;
-            continue;
-        }
-        result.append(backslashes, L'\\');
-        backslashes = 0;
-        result.push_back(character);
-    }
-    result.append(backslashes * 2, L'\\');
-    result.push_back(L'\"');
-    return result;
-}
-
-CropRect ParseCrop(const std::wstring& text) {
-    std::wstringstream stream(text);
-    CropRect crop{};
-    wchar_t comma1{}, comma2{}, comma3{};
-    if (!(stream >> crop.x >> comma1 >> crop.y >> comma2 >> crop.width >> comma3 >> crop.height) ||
-        comma1 != L',' || comma2 != L',' || comma3 != L',' || crop.width == 0 || crop.height == 0) {
-        throw std::runtime_error("Formato invalido para --crop. Use X,Y,LARGURA,ALTURA.");
-    }
-    return crop;
-}
-
 Options ParseOptions(int argc, wchar_t** argv) {
     Options options;
     for (int index = 1; index < argc; ++index) {
@@ -244,7 +201,7 @@ Options ParseOptions(int argc, wchar_t** argv) {
         } else if (argument == L"--record") {
             options.record = require_value(L"--record");
         } else if (argument == L"--seconds") {
-            options.seconds = std::stoi(require_value(L"--seconds"));
+            options.seconds = yourots::ParseDuration(require_value(L"--seconds"));
         } else if (argument == L"--ffmpeg") {
             options.ffmpeg = require_value(L"--ffmpeg");
         } else if (argument == L"--help" || argument == L"-h") {
@@ -358,7 +315,7 @@ void SavePng(const fs::path& path, const FrameBuffer& frame) {
     winrt::check_hresult(encoder->Commit());
 }
 
-class WindowCapture {
+class WindowCapture : public std::enable_shared_from_this<WindowCapture> {
 public:
     WindowCapture(HWND hwnd, CropRect crop)
         : hwnd_(hwnd), crop_(crop) {
@@ -396,27 +353,40 @@ public:
             border_required_ = session_.IsBorderRequired();
         }
 
-        frame_token_ = pool_.FrameArrived([this](const auto& sender, const auto&) {
-            OnFrame(sender);
+        frame_token_ = pool_.FrameArrived([weak = weak_from_this()](const auto& sender, const auto&) {
+            if (const auto self = weak.lock()) {
+                self->OnFrame(sender);
+            }
         });
-        session_.StartCapture();
+        frame_registered_ = true;
+        closed_token_ = item_.Closed([weak = weak_from_this()](const auto&, const auto&) {
+            if (const auto self = weak.lock()) {
+                self->SetError("A janela fonte foi fechada.");
+            }
+        });
+        closed_registered_ = true;
         started_.store(true);
+        session_.StartCapture();
     }
 
     void Stop() noexcept {
-        if (!started_.exchange(false)) {
-            return;
-        }
+        started_.store(false);
         try {
-            if (pool_ && frame_token_.value != 0) {
+            if (pool_ && frame_registered_) {
                 pool_.FrameArrived(frame_token_);
-                frame_token_ = {};
+                frame_registered_ = false;
+            }
+            if (item_ && closed_registered_) {
+                item_.Closed(closed_token_);
+                closed_registered_ = false;
             }
             if (session_) {
                 session_.Close();
+                session_ = nullptr;
             }
             if (pool_) {
                 pool_.Close();
+                pool_ = nullptr;
             }
         } catch (...) {
         }
@@ -441,6 +411,12 @@ public:
 
     FrameBuffer LatestFrame() const {
         std::scoped_lock lock(mutex_);
+        if (!last_error_.empty()) {
+            throw std::runtime_error(last_error_);
+        }
+        if (!IsWindow(hwnd_)) {
+            throw std::runtime_error("A janela fonte foi fechada.");
+        }
         return latest_;
     }
 
@@ -454,6 +430,10 @@ public:
 
 private:
     void OnFrame(const Direct3D11CaptureFramePool& sender) noexcept {
+        std::scoped_lock callback_lock(callback_mutex_);
+        if (!started_.load()) {
+            return;
+        }
         try {
             auto frame = sender.TryGetNextFrame();
             if (!frame) {
@@ -470,20 +450,10 @@ private:
 
             const auto content_width = static_cast<std::uint32_t>(content_size.Width);
             const auto content_height = static_cast<std::uint32_t>(content_size.Height);
-            CropRect effective = crop_;
-            if (effective.IsFullFrame()) {
-                effective = CropRect{0, 0, content_width, content_height};
+            if (content_width > source_desc.Width || content_height > source_desc.Height) {
+                throw std::runtime_error("O tamanho da janela mudou; refaca a captura e o recorte.");
             }
-
-            if (effective.x >= content_width || effective.y >= content_height ||
-                effective.width > content_width - effective.x ||
-                effective.height > content_height - effective.y) {
-                std::ostringstream message;
-                message << "Recorte fora do quadro. Quadro=" << content_width << "x" << content_height
-                        << ", crop=" << effective.x << ',' << effective.y << ','
-                        << effective.width << ',' << effective.height;
-                throw std::runtime_error(message.str());
-            }
+            const CropRect effective = yourots::ResolveCrop(crop_, content_width, content_height);
 
             EnsureStagingTexture(effective.width, effective.height, source_desc.Format);
 
@@ -503,14 +473,14 @@ private:
             FrameBuffer next;
             next.width = effective.width;
             next.height = effective.height;
-            const std::size_t row_bytes = static_cast<std::size_t>(effective.width) * 4U;
-            next.bgra.resize(row_bytes * effective.height);
-            const auto* source_row = static_cast<const std::uint8_t*>(mapped.pData);
-            auto* destination_row = next.bgra.data();
-            for (std::uint32_t y = 0; y < effective.height; ++y) {
-                std::copy_n(source_row, row_bytes, destination_row);
-                source_row += mapped.RowPitch;
-                destination_row += row_bytes;
+            try {
+                next.bgra = yourots::PackBgraRows(
+                    {static_cast<const std::uint8_t*>(mapped.pData),
+                     static_cast<std::size_t>(mapped.RowPitch) * effective.height},
+                    effective.width, effective.height, mapped.RowPitch);
+            } catch (...) {
+                d3d_context_->Unmap(staging_.get(), 0);
+                throw;
             }
             d3d_context_->Unmap(staging_.get(), 0);
 
@@ -568,17 +538,28 @@ private:
     Direct3D11CaptureFramePool pool_{nullptr};
     GraphicsCaptureSession session_{nullptr};
     winrt::event_token frame_token_{};
+    winrt::event_token closed_token_{};
+    bool frame_registered_{};
+    bool closed_registered_{};
     winrt::com_ptr<ID3D11Texture2D> staging_;
     std::uint32_t staging_width_{};
     std::uint32_t staging_height_{};
     DXGI_FORMAT staging_format_{DXGI_FORMAT_UNKNOWN};
     mutable std::mutex mutex_;
+    std::mutex callback_mutex_;
     std::condition_variable cv_;
     FrameBuffer latest_;
     std::string last_error_;
     std::atomic_bool started_{false};
     bool border_property_supported_{};
     bool border_required_{};
+};
+
+// Always stop on the calling thread, including exception paths. An in-flight
+// delegate holds a strong reference only for the duration of its callback.
+struct CaptureStopGuard {
+    std::shared_ptr<WindowCapture> capture;
+    ~CaptureStopGuard() { capture->Stop(); }
 };
 
 class FfmpegProcess {
@@ -697,6 +678,11 @@ private:
             stdin_write_ = nullptr;
         }
         if (process_ != nullptr) {
+            // Closing stdin lets FFmpeg preserve any frames already received.
+            if (WaitForSingleObject(process_, 5000) == WAIT_TIMEOUT) {
+                TerminateProcess(process_, 2);
+                WaitForSingleObject(process_, 5000);
+            }
             CloseHandle(process_);
             process_ = nullptr;
         }
@@ -808,6 +794,9 @@ void Record(WindowCapture& capture, const Options& options, const FrameBuffer& i
         if (!latest.bgra.empty()) {
             current = std::move(latest);
         }
+        if (current.width != initial.width || current.height != initial.height) {
+            throw std::runtime_error("O tamanho do quadro mudou durante a gravacao.");
+        }
         ffmpeg.WriteFrame(current);
         std::this_thread::sleep_until(deadline);
         if ((index + 1) % 150 == 0 || index + 1 == frame_count) {
@@ -838,6 +827,7 @@ void PrintCaptureDiagnostics(HWND hwnd, const WindowCapture& capture, const Fram
 
 int wmain(int argc, wchar_t** argv) {
     try {
+        std::cout << std::unitbuf;
         winrt::init_apartment(winrt::apartment_type::multi_threaded);
         const Options options = ParseOptions(argc, argv);
 
@@ -867,10 +857,11 @@ int wmain(int argc, wchar_t** argv) {
             return 3;
         }
 
-        WindowCapture capture(hwnd, options.crop);
-        capture.Start();
-        FrameBuffer first = capture.WaitForFrame(10s);
-        PrintCaptureDiagnostics(hwnd, capture, first);
+        auto capture = std::make_shared<WindowCapture>(hwnd, options.crop);
+        const CaptureStopGuard stop_guard{capture};
+        capture->Start();
+        FrameBuffer first = capture->WaitForFrame(10s);
+        PrintCaptureDiagnostics(hwnd, *capture, first);
 
         if (!options.snapshot.empty()) {
             SavePng(options.snapshot, first);
@@ -880,9 +871,16 @@ int wmain(int argc, wchar_t** argv) {
         if (options.overlay_probe) {
             HWND overlay = CreateOverlayWindow(hwnd, options.crop);
             std::this_thread::sleep_for(750ms);
-            const FrameBuffer before_overlay_frame = capture.LatestFrame();
-            const std::uint64_t before_sequence = before_overlay_frame.sequence;
-            FrameBuffer overlay_frame = capture.WaitForFrame(3s, before_sequence);
+            RECT overlay_rect{};
+            GetWindowRect(overlay, &overlay_rect);
+            HDC desktop = GetDC(nullptr);
+            const COLORREF center_color = GetPixel(desktop,
+                (overlay_rect.left + overlay_rect.right) / 2,
+                (overlay_rect.top + overlay_rect.bottom) / 2);
+            ReleaseDC(nullptr, desktop);
+            std::cout << "overlay_visible=" << (center_color == RGB(255, 0, 255) ? "true" : "false") << '\n';
+            // A static source may legitimately emit no new frames on occlusion.
+            FrameBuffer overlay_frame = capture->LatestFrame();
             if (!options.overlay_snapshot.empty()) {
                 SavePng(options.overlay_snapshot, overlay_frame);
                 std::cout << "overlay_snapshot=" << WideToUtf8(fs::absolute(options.overlay_snapshot).wstring()) << '\n';
@@ -892,11 +890,11 @@ int wmain(int argc, wchar_t** argv) {
         }
 
         if (!options.record.empty()) {
-            Record(capture, options, capture.LatestFrame());
+            Record(*capture, options, capture->LatestFrame());
             std::cout << "recording=" << WideToUtf8(fs::absolute(options.record).wstring()) << '\n';
         }
 
-        capture.Stop();
+        capture->Stop();
         return 0;
     } catch (const winrt::hresult_error& error) {
         std::cerr << "WinRT error 0x" << std::hex << static_cast<std::uint32_t>(error.code().value)

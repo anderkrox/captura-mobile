@@ -20,6 +20,12 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+add_library(CaptureCore STATIC src/capture_core.cpp)
+target_include_directories(CaptureCore PUBLIC src)
+target_compile_options(CaptureCore PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive- /EHsc /utf-8>
+)
+
 add_executable(YourotsCapture WIN32
     src/main.cpp
 )
@@ -61,6 +67,7 @@ target_link_libraries(YourotsCapture PRIVATE
 )
 
 target_link_libraries(YourotsCapturePoc PRIVATE
+    CaptureCore
     d3d11
     dxgi
     shell32
@@ -83,6 +90,24 @@ if(BUILD_TESTING)
     find_program(POWERSHELL_EXECUTABLE NAMES powershell REQUIRED)
     find_package(Python3 3.10 REQUIRED COMPONENTS Interpreter)
 
+    add_executable(CaptureCoreTests tests/capture_core_tests.cpp)
+    target_compile_definitions(CaptureCoreTests PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+    target_compile_options(CaptureCoreTests PRIVATE
+        $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive- /EHsc /utf-8>
+    )
+    target_link_libraries(CaptureCoreTests PRIVATE CaptureCore shell32)
+    add_test(NAME unit.capture_core
+        COMMAND CaptureCoreTests "${CMAKE_CURRENT_BINARY_DIR}/test-results/$<CONFIG>/capture-core.xml"
+    )
+    set_tests_properties(unit.capture_core PROPERTIES LABELS unit TIMEOUT 15)
+
+    add_executable(CaptureFixture WIN32 tests/capture_fixture.cpp)
+    target_compile_definitions(CaptureFixture PRIVATE UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+    target_compile_options(CaptureFixture PRIVATE
+        $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive- /EHsc /utf-8>
+    )
+    target_link_libraries(CaptureFixture PRIVATE gdi32)
+
     add_test(NAME unit.ffmpeg_setup
         COMMAND "${POWERSHELL_EXECUTABLE}" -NoProfile -ExecutionPolicy Bypass
             -File "${CMAKE_CURRENT_SOURCE_DIR}/tests/run-unit.ps1"
@@ -101,4 +126,14 @@ if(BUILD_TESTING)
             --artifacts "${CMAKE_CURRENT_BINARY_DIR}/test-results/$<CONFIG>/e2e"
     )
     set_tests_properties(e2e.phase0 PROPERTIES LABELS e2e TIMEOUT 90 RUN_SERIAL TRUE)
+
+    add_test(NAME e2e.phase1
+        COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/e2e_phase1.py"
+            --app "$<TARGET_FILE:YourotsCapturePoc>"
+            --fixture "$<TARGET_FILE:CaptureFixture>"
+            --ffmpeg "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ffmpeg/bin/ffmpeg.exe"
+            --ffprobe "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ffmpeg/bin/ffprobe.exe"
+            --artifacts "${CMAKE_CURRENT_BINARY_DIR}/test-results/$<CONFIG>/e2e-phase1"
+    )
+    set_tests_properties(e2e.phase1 PROPERTIES LABELS e2e TIMEOUT 180 RUN_SERIAL TRUE)
 endif()
