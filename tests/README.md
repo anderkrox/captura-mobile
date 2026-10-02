@@ -31,6 +31,11 @@ Também existem os presets `debug` para build e testes. Para compilar o
 aplicativo sem as dependências de teste, configure com
 `cmake --preset vs2022-x64 -DBUILD_TESTING=OFF`.
 
+Para compilar somente o aplicativo em Release x64, use
+`..\compilar_windows_x64.cmd` a partir desta pasta, ou
+`.\compilar_windows_x64.cmd` na raiz. Esse script usa `build/windows-x64`,
+separado dos presets de testes, e não compila os executáveis de validação.
+
 ## Testes unitários
 
 `capture_core_tests.cpp` contém 50 casos em C++ sobre o código usado pela POC:

@@ -11,6 +11,31 @@ Versoes fixadas para a primeira implementacao:
 - Direct3D 11 e DXGI.
 - FFmpeg/FFprobe 9.0.2, build Windows x64 Essentials da Gyan.
 
+## Compilar o aplicativo em Windows x64
+
+Na raiz do projeto, execute no CMD ou PowerShell:
+
+```powershell
+.\compilar_windows_x64.cmd
+```
+
+O script funciona a partir de qualquer pasta, verifica Windows e processador
+x64 e fixa o alvo CMake em `x64`. Procura CMake no PATH e, se necessário, na
+instalação do Visual Studio 2022. Compila somente `YourotsCapture` em Release,
+com `BUILD_TESTING=OFF`, sem gerar executáveis de testes ou das POCs.
+
+O resultado fica em `build/windows-x64/Release/YourotsCapture.exe`. As próximas
+execuções reutilizam essa mesma pasta para compilação incremental. O script
+retorna código zero em caso de sucesso e propaga falhas do CMake. As
+dependências nativas listadas acima devem estar instaladas; FFmpeg/FFprobe são
+necessários ao executar as funções de gravação, não à compilação.
+
+Os presets de desenvolvimento e testes continuam usando `build/vs2022-x64`.
+Na limpeza de 02/10/2026, os builds antigos Debug e Release foram limpos pelo
+CMake. Relatórios, mídias de teste e o restante da árvore gerada foram
+arquivados localmente em `artifacts/build-archive/20261002-vs2022-x64/`; essa
+pasta é ignorada pelo Git. O diretório `build/` ficou reservado ao novo build.
+
 Para os testes: Python 3.10 ou superior, Windows PowerShell e Pester 3.4.0.
 As instrucoes e a cobertura estao em [tests/README.md](../tests/README.md).
 Essas dependencias nao sao necessarias com `BUILD_TESTING=OFF`.
