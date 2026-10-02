@@ -227,6 +227,12 @@ if(BUILD_TESTING)
     )
     set_tests_properties(unit.ffmpeg_setup PROPERTIES LABELS unit TIMEOUT 30)
 
+    add_test(NAME unit.phase5_validation
+        COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/phase5_validation_tests.py"
+            "${CMAKE_CURRENT_BINARY_DIR}/test-results/$<CONFIG>/phase5-validation.xml"
+    )
+    set_tests_properties(unit.phase5_validation PROPERTIES LABELS unit TIMEOUT 15)
+
     add_test(NAME e2e.phase0
         COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/e2e_phase0.py"
             --app "$<TARGET_FILE:YourotsCapture>"
@@ -279,4 +285,14 @@ if(BUILD_TESTING)
             --artifacts "${CMAKE_CURRENT_BINARY_DIR}/test-results/$<CONFIG>/e2e-phase4"
     )
     set_tests_properties(e2e.phase4 PROPERTIES LABELS e2e TIMEOUT 240 RUN_SERIAL TRUE)
+
+    add_test(NAME e2e.phase5
+        COMMAND "${Python3_EXECUTABLE}" "${CMAKE_CURRENT_SOURCE_DIR}/tests/e2e_phase5.py"
+            --app "$<TARGET_FILE:YourotsCapture>"
+            --fixture "$<TARGET_FILE:CaptureFixture>"
+            --ffmpeg "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ffmpeg/bin/ffmpeg.exe"
+            --ffprobe "${CMAKE_CURRENT_SOURCE_DIR}/third_party/ffmpeg/bin/ffprobe.exe"
+            --artifacts "${CMAKE_CURRENT_BINARY_DIR}/test-results/$<CONFIG>/e2e-phase5"
+    )
+    set_tests_properties(e2e.phase5 PROPERTIES LABELS e2e TIMEOUT 240 RUN_SERIAL TRUE)
 endif()

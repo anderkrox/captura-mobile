@@ -140,11 +140,11 @@ class RecordingApplication(Application):
         require(self.enabled(START), 'Iniciar nao habilitou com calibracao valida.')
 
 
-def video(args, path):
+def video(args, path, *, moving=False):
     metadata = json.loads(run([str(args.ffprobe), '-v', 'error', '-count_frames', '-show_streams',
                               '-show_format', '-of', 'json', str(path)]))
     frames = int(metadata['streams'][0]['nb_read_frames'])
-    return verify_video(args, path, frames, frames / 30 - 0.000001, moving=False)
+    return verify_video(args, path, frames, frames / 30 - 0.000001, moving=moving)
 
 
 def newly_created(folder, before, suffix='*.mp4'):

@@ -94,6 +94,16 @@ std::wstring RemuxArguments(const std::filesystem::path& mkv, const std::filesys
         L"-video_track_timescale 15360 -movflags +faststart " + QuoteCommandArgument(mp4.wstring());
 }
 
+std::uint32_t MediaVerificationTimeoutMilliseconds(std::uint64_t frames, int fps) {
+    if (fps != 30) throw std::invalid_argument("FPS invalido para validar a gravacao.");
+    // Full frame counting decodes the file. A 30-minute recording can exceed 30s.
+    // Recovery has no trusted frame count yet; both paths retain a finite 10min cap.
+    constexpr std::uint32_t maximum = 600000;
+    if (frames == 0 || frames >= 570ULL * static_cast<std::uint64_t>(fps)) return maximum;
+    const auto seconds = (frames + static_cast<std::uint64_t>(fps) - 1) / static_cast<std::uint64_t>(fps);
+    return 30000 + static_cast<std::uint32_t>(seconds) * 1000;
+}
+
 double ValidateVideoProbe(std::string_view output, std::uint64_t frames, int fps) {
     if (frames == 0 || fps != 30) {
         throw std::invalid_argument("Linha do tempo de gravacao invalida.");

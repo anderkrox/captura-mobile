@@ -1,0 +1,704 @@
+{
+  "phase": 5,
+  "date": "2026-10-02",
+  "completed_at": "2026-10-02T08:55:47-03:00",
+  "timezone": "America/Sao_Paulo",
+  "base_commit": "d5edfff5fbc1ae8a6deec4e758e9431162df4264",
+  "platform": "Windows-10-10.0.19045-SP0",
+  "status": "validation_passed_with_documented_coverage_limits",
+  "scope": "Production Win32 UI, real WGC/D3D11 and libx264; short repeated recordings, physical monitors and DPI, existing Edge game window and a separate owned Edge window for close/recovery.",
+  "user_requested_change": {
+    "continuous_30_minute_recording_required": false,
+    "replacement": "12 short recording cycles per build configuration with resource release, pauses and media verification.",
+    "repeat_recording": "cancelled_by_user",
+    "long_recording_tool_in_test_workflow": false
+  },
+  "verification": {
+    "release_build": "passed",
+    "debug_build": "passed",
+    "remaining_validation_processes": 0,
+    "python_compilation": "passed",
+    "powershell_syntax": "passed",
+    "original_display_scale_restored": true,
+    "current_game_window_dpi": 96
+  },
+  "corrected_behaviors": [
+    "Full FFprobe frame counting uses a duration-based timeout capped at 600000 ms; recovery of unknown duration uses the same finite cap.",
+    "Restored Edge capture reopens the same WGC source while Recorder remains paused, then requires stable original dimensions and DPI before Resume.",
+    "Restore diagnostics include actual and expected dimensions/DPI; incompatible resize or DPI continues to require recalibration."
+  ],
+  "configurations": {
+    "Release": {
+      "build": "passed",
+      "full_ctest": {
+        "report": "build/vs2022-x64/test-results/Release/ctest.xml",
+        "entries": 12,
+        "failures": 0,
+        "test_time_seconds": 230.685,
+        "timestamp": "2026-10-02T08:19:29"
+      },
+      "final_recheck_after_removing_long_recording_tool": {
+        "report": "build/vs2022-x64/test-results/Release/ctest-phase5-final.xml",
+        "entries": 7,
+        "failures": 0,
+        "test_time_seconds": 70.226,
+        "timestamp": "2026-10-02T08:51:27"
+      },
+      "unit_cases": {
+        "capture-core": 50,
+        "calibration": 87,
+        "recorder": 91,
+        "application-controls": 87,
+        "phase5-validation": 37,
+        "ffmpeg-setup": 14
+      },
+      "unit_total": 366,
+      "e2e": {
+        "phase0": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Release/e2e/report.json"
+        },
+        "phase1": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Release/e2e-phase1/report.json",
+          "case_count": 9,
+          "cases": [
+            "window_selection",
+            "six_capture_start_stop_cycles_and_png_corners",
+            "visible_overlay_excluded",
+            "native_capture_moving_video_and_unicode_path",
+            "invalid_crop_missing_ffmpeg_encoder_failure",
+            "static_source_overlay_and_duration",
+            "source_closed_reported_as_failure",
+            "source_resized_reported_as_failure",
+            "invalid_cli_arguments"
+          ]
+        },
+        "phase2": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Release/e2e-phase2/report.json",
+          "case_count": 19,
+          "cases": [
+            "startup_pm_v2_and_unavailable_calibration",
+            "window_selector_and_native_preview_four_corners",
+            "explicit_physical_crop_and_preview",
+            "invalid_ratio_bounds_overflow_and_empty_edits_rejected",
+            "fine_position_size_and_reference_controls",
+            "scaled_preview_drag_and_letterbox_exclusion",
+            "source_movement_preserves_physical_crop_and_pixels",
+            "unicode_settings_identity_crop_dpi_without_hwnd",
+            "restart_rechecks_and_restores_saved_source",
+            "resize_invalidates_until_explicit_recalibration",
+            "shrink_rejects_reference_and_accepts_smaller_mobile_crop",
+            "minimized_source_blocks_save_and_restores",
+            "source_close_and_stale_selection_fail_without_crash",
+            "missing_saved_source_requires_selection",
+            "new_source_process_restores_by_identity",
+            "ambiguous_saved_identity_does_not_auto_select",
+            "saved_dpi_mismatch_requires_recalibration",
+            "saved_frame_mismatch_requires_recalibration",
+            "corrupt_settings_and_write_failure_are_controlled"
+          ]
+        },
+        "phase3": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Release/e2e-phase3/report.json",
+          "case_count": 22,
+          "cases": [
+            "missing_saved_calibration_rejected",
+            "moving_native_capture_unicode_path_metadata_pixels_and_faststart",
+            "saved_source_identity_crop_frame_and_dpi_used_without_modification",
+            "saved_dpi_frame_and_ambiguous_identity_rejected",
+            "invalid_cli_crop_tools_output_and_source_rejected",
+            "recorder_lifecycle_cycles",
+            "recorder_lifecycle_pressure",
+            "recorder_lifecycle_recovery",
+            "recorder_lifecycle_destructor",
+            "media_tool_verbose_cpu",
+            "media_tool_all_encoders_fail",
+            "media_tool_encoder_exit",
+            "media_tool_remux_fail",
+            "media_tool_probe_fail",
+            "media_tool_audio_fail",
+            "media_tool_unexpected_audio",
+            "media_tool_probe_nan",
+            "existing_destination_directory_rejected_before_recording",
+            "static_source_repeats_frames_and_preserves_duration",
+            "source_closed_stops_with_error_and_preserves_mkv",
+            "source_resized_stops_with_error_and_preserves_mkv",
+            "production_recovery_helper_validates_and_preserves_original"
+          ]
+        },
+        "phase4": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Release/e2e-phase4/report.json",
+          "case_count": 20,
+          "cases": [
+            "ready_destination_and_start_requires_calibration",
+            "buttons_repeated_pause_frozen_counter_and_mp4_excludes_pauses",
+            "invalid_and_duplicate_hotkeys_preserve_preferences",
+            "external_hotkey_conflict_rolls_back_and_real_global_keys_control_recording",
+            "hotkeys_canonicalized_and_saved",
+            "minimize_auto_pause_restore_requires_explicit_resume",
+            "resize_auto_pause_blocks_resume_and_requires_recalibration",
+            "close_active_no_keeps_session_yes_finalizes_paused_session",
+            "restart_restores_preferences_and_releases_hotkeys",
+            "successive_sessions_have_distinct_output_names",
+            "destination_created_during_recording_is_preserved_and_mkv_recovers",
+            "remux_fail_preserves_mkv_and_validated_recovery",
+            "probe_fail_preserves_mkv_and_validated_recovery",
+            "unexpected_audio_preserves_mkv_and_validated_recovery",
+            "probe_nan_preserves_mkv_and_validated_recovery",
+            "encoder_abort_preserves_mkv_and_warns_on_close",
+            "invalid_destination_reports_error_and_preserves_existing_file",
+            "real_write_permission_denial_rejected_before_encoding",
+            "prior_recordings_unchanged_after_faults_and_recovery",
+            "source_closed_while_paused_is_error_with_validated_recovery"
+          ]
+        },
+        "phase5": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Release/e2e-phase5/report.json",
+          "case_count": 9,
+          "cases": [
+            "static_physical_monitor_movement_preserves_pixels_and_crop",
+            "static_four_recordings_release_resources",
+            "static_repeated_pause_excluded_from_timeline",
+            "motion_physical_monitor_movement_preserves_pixels_and_crop",
+            "motion_four_recordings_release_resources",
+            "motion_repeated_pause_excluded_from_timeline",
+            "stress_physical_monitor_movement_preserves_pixels_and_crop",
+            "stress_four_recordings_release_resources",
+            "stress_repeated_pause_excluded_from_timeline"
+          ],
+          "recording_cycles": 12,
+          "physical_monitor_status": "passed",
+          "cycle_frame_counts": [
+            94,
+            57,
+            38,
+            37,
+            96,
+            58,
+            37,
+            37,
+            93,
+            58,
+            37,
+            37
+          ],
+          "cycle_durations_seconds": [
+            3.133333,
+            1.9,
+            1.266667,
+            1.233333,
+            3.2,
+            1.933333,
+            1.233333,
+            1.233333,
+            3.1,
+            1.933333,
+            1.233333,
+            1.233333
+          ],
+          "resource_checks": "Same app: private memory growth <=32 MiB, handles <=32, GDI/User objects <=8 across four completed sessions per source."
+        }
+      },
+      "application_sha256": "6b93a445131192edb4bfcd69d0abe604c89d9c4e0ef4476c484ed2e7f283a882"
+    },
+    "Debug": {
+      "build": "passed",
+      "full_ctest": {
+        "report": "build/vs2022-x64/test-results/Debug/ctest.xml",
+        "entries": 12,
+        "failures": 0,
+        "test_time_seconds": 237.768,
+        "timestamp": "2026-10-02T08:35:42"
+      },
+      "final_recheck_after_removing_long_recording_tool": {
+        "report": "build/vs2022-x64/test-results/Debug/ctest-phase5-final.xml",
+        "entries": 7,
+        "failures": 0,
+        "test_time_seconds": 69.549,
+        "timestamp": "2026-10-02T08:52:51"
+      },
+      "unit_cases": {
+        "capture-core": 50,
+        "calibration": 87,
+        "recorder": 91,
+        "application-controls": 87,
+        "phase5-validation": 37,
+        "ffmpeg-setup": 14
+      },
+      "unit_total": 366,
+      "e2e": {
+        "phase0": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Debug/e2e/report.json"
+        },
+        "phase1": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Debug/e2e-phase1/report.json",
+          "case_count": 9,
+          "cases": [
+            "window_selection",
+            "six_capture_start_stop_cycles_and_png_corners",
+            "visible_overlay_excluded",
+            "native_capture_moving_video_and_unicode_path",
+            "invalid_crop_missing_ffmpeg_encoder_failure",
+            "static_source_overlay_and_duration",
+            "source_closed_reported_as_failure",
+            "source_resized_reported_as_failure",
+            "invalid_cli_arguments"
+          ]
+        },
+        "phase2": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Debug/e2e-phase2/report.json",
+          "case_count": 19,
+          "cases": [
+            "startup_pm_v2_and_unavailable_calibration",
+            "window_selector_and_native_preview_four_corners",
+            "explicit_physical_crop_and_preview",
+            "invalid_ratio_bounds_overflow_and_empty_edits_rejected",
+            "fine_position_size_and_reference_controls",
+            "scaled_preview_drag_and_letterbox_exclusion",
+            "source_movement_preserves_physical_crop_and_pixels",
+            "unicode_settings_identity_crop_dpi_without_hwnd",
+            "restart_rechecks_and_restores_saved_source",
+            "resize_invalidates_until_explicit_recalibration",
+            "shrink_rejects_reference_and_accepts_smaller_mobile_crop",
+            "minimized_source_blocks_save_and_restores",
+            "source_close_and_stale_selection_fail_without_crash",
+            "missing_saved_source_requires_selection",
+            "new_source_process_restores_by_identity",
+            "ambiguous_saved_identity_does_not_auto_select",
+            "saved_dpi_mismatch_requires_recalibration",
+            "saved_frame_mismatch_requires_recalibration",
+            "corrupt_settings_and_write_failure_are_controlled"
+          ]
+        },
+        "phase3": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Debug/e2e-phase3/report.json",
+          "case_count": 22,
+          "cases": [
+            "missing_saved_calibration_rejected",
+            "moving_native_capture_unicode_path_metadata_pixels_and_faststart",
+            "saved_source_identity_crop_frame_and_dpi_used_without_modification",
+            "saved_dpi_frame_and_ambiguous_identity_rejected",
+            "invalid_cli_crop_tools_output_and_source_rejected",
+            "recorder_lifecycle_cycles",
+            "recorder_lifecycle_pressure",
+            "recorder_lifecycle_recovery",
+            "recorder_lifecycle_destructor",
+            "media_tool_verbose_cpu",
+            "media_tool_all_encoders_fail",
+            "media_tool_encoder_exit",
+            "media_tool_remux_fail",
+            "media_tool_probe_fail",
+            "media_tool_audio_fail",
+            "media_tool_unexpected_audio",
+            "media_tool_probe_nan",
+            "existing_destination_directory_rejected_before_recording",
+            "static_source_repeats_frames_and_preserves_duration",
+            "source_closed_stops_with_error_and_preserves_mkv",
+            "source_resized_stops_with_error_and_preserves_mkv",
+            "production_recovery_helper_validates_and_preserves_original"
+          ]
+        },
+        "phase4": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Debug/e2e-phase4/report.json",
+          "case_count": 20,
+          "cases": [
+            "ready_destination_and_start_requires_calibration",
+            "buttons_repeated_pause_frozen_counter_and_mp4_excludes_pauses",
+            "invalid_and_duplicate_hotkeys_preserve_preferences",
+            "external_hotkey_conflict_rolls_back_and_real_global_keys_control_recording",
+            "hotkeys_canonicalized_and_saved",
+            "minimize_auto_pause_restore_requires_explicit_resume",
+            "resize_auto_pause_blocks_resume_and_requires_recalibration",
+            "close_active_no_keeps_session_yes_finalizes_paused_session",
+            "restart_restores_preferences_and_releases_hotkeys",
+            "successive_sessions_have_distinct_output_names",
+            "destination_created_during_recording_is_preserved_and_mkv_recovers",
+            "remux_fail_preserves_mkv_and_validated_recovery",
+            "probe_fail_preserves_mkv_and_validated_recovery",
+            "unexpected_audio_preserves_mkv_and_validated_recovery",
+            "probe_nan_preserves_mkv_and_validated_recovery",
+            "encoder_abort_preserves_mkv_and_warns_on_close",
+            "invalid_destination_reports_error_and_preserves_existing_file",
+            "real_write_permission_denial_rejected_before_encoding",
+            "prior_recordings_unchanged_after_faults_and_recovery",
+            "source_closed_while_paused_is_error_with_validated_recovery"
+          ]
+        },
+        "phase5": {
+          "status": "passed",
+          "report": "build/vs2022-x64/test-results/Debug/e2e-phase5/report.json",
+          "case_count": 9,
+          "cases": [
+            "static_physical_monitor_movement_preserves_pixels_and_crop",
+            "static_four_recordings_release_resources",
+            "static_repeated_pause_excluded_from_timeline",
+            "motion_physical_monitor_movement_preserves_pixels_and_crop",
+            "motion_four_recordings_release_resources",
+            "motion_repeated_pause_excluded_from_timeline",
+            "stress_physical_monitor_movement_preserves_pixels_and_crop",
+            "stress_four_recordings_release_resources",
+            "stress_repeated_pause_excluded_from_timeline"
+          ],
+          "recording_cycles": 12,
+          "physical_monitor_status": "passed",
+          "cycle_frame_counts": [
+            95,
+            57,
+            37,
+            37,
+            94,
+            57,
+            38,
+            38,
+            93,
+            56,
+            37,
+            38
+          ],
+          "cycle_durations_seconds": [
+            3.166667,
+            1.9,
+            1.233333,
+            1.233333,
+            3.133333,
+            1.9,
+            1.266667,
+            1.266667,
+            3.1,
+            1.866667,
+            1.233333,
+            1.266667
+          ],
+          "resource_checks": "Same app: private memory growth <=32 MiB, handles <=32, GDI/User objects <=8 across four completed sessions per source."
+        }
+      },
+      "application_sha256": "52066978f97dabc5fa50f150854032c6672bd8c4d36e2ad5b54ef0d301336b87"
+    }
+  },
+  "real_environment": {
+    "game_browser": {
+      "status": "passed",
+      "report": "artifacts/phase5/browser-current-layout/report.json",
+      "case_count": 6,
+      "cases": [
+        "game_repeated_pause_resume_excludes_pauses",
+        "game_edge_moved_across_both_monitors_preserves_crop",
+        "game_edge_minimize_restore_requires_resume",
+        "game_edge_resize_requires_explicit_recalibration",
+        "owned_edge_close_reports_error_and_preserves_mkv",
+        "owned_edge_interrupted_recording_recovers_with_real_ffmpeg"
+      ],
+      "game_video": {
+        "frames": 105,
+        "duration_seconds": 3.5,
+        "resolution": "1080x1920",
+        "fps": 30,
+        "audio_streams": 0,
+        "full_decode": true,
+        "faststart": true,
+        "corner_mean_absolute_errors_first_middle_last": [
+          [
+            5.144205729166667,
+            3.5602213541666665,
+            3.8336588541666665,
+            2.9853515625
+          ],
+          [
+            5.137369791666667,
+            3.5680338541666665,
+            3.8336588541666665,
+            2.9853515625
+          ],
+          [
+            5.137369791666667,
+            3.5680338541666665,
+            3.8291015625,
+            2.9967447916666665
+          ]
+        ]
+      },
+      "recovered_video": {
+        "frames": 63,
+        "duration_seconds": 2.1,
+        "resolution": "1080x1920",
+        "fps": 30,
+        "audio_streams": 0,
+        "full_decode": true,
+        "faststart": true
+      },
+      "source_placement_restored": true,
+      "viewport_css": "486x864",
+      "preview_scale_percent": 100,
+      "initial_crop_physical_pixels": [
+        410,
+        147,
+        486,
+        864
+      ],
+      "restored_layout_crop_physical_pixels": [
+        410,
+        139,
+        486,
+        864
+      ]
+    },
+    "physical_dpi": {
+      "status": "passed",
+      "report": "artifacts/phase5/physical-dpi-confirmed/report.json",
+      "source": "controlled Win32 source",
+      "scales": [
+        {
+          "percent": 100,
+          "source_dpi": 96,
+          "other_monitor_dpi": 96,
+          "settings": {
+            "display": 1,
+            "original": "100% (Recomendado)",
+            "selected": "100% (Recomendado)"
+          },
+          "video": {
+            "frames": 77,
+            "duration_seconds": 2.566667,
+            "marker_centers": [
+              85.5,
+              85.5,
+              85.5
+            ],
+            "faststart": true,
+            "full_decode": true,
+            "four_corners": true,
+            "audio_streams": 0
+          },
+          "recalibration_required_on_dpi_change": false
+        },
+        {
+          "percent": 125,
+          "source_dpi": 120,
+          "other_monitor_dpi": 96,
+          "settings": {
+            "display": 1,
+            "original": "100% (Recomendado)",
+            "selected": "125%"
+          },
+          "video": {
+            "frames": 35,
+            "duration_seconds": 1.166667,
+            "marker_centers": [
+              85.5,
+              85.5,
+              85.5
+            ],
+            "faststart": true,
+            "full_decode": true,
+            "four_corners": true,
+            "audio_streams": 0
+          },
+          "recalibration_required_on_dpi_change": true
+        },
+        {
+          "percent": 150,
+          "source_dpi": 144,
+          "other_monitor_dpi": 96,
+          "settings": {
+            "display": 1,
+            "original": "125%",
+            "selected": "150%"
+          },
+          "video": {
+            "frames": 35,
+            "duration_seconds": 1.166667,
+            "marker_centers": [
+              85.5,
+              85.5,
+              85.5
+            ],
+            "faststart": true,
+            "full_decode": true,
+            "four_corners": true,
+            "audio_streams": 0
+          },
+          "recalibration_required_on_dpi_change": true
+        }
+      ],
+      "restored_scale": {
+        "display": 1,
+        "original": "150%",
+        "selected": "100% (Recomendado)"
+      }
+    },
+    "character_movement": {
+      "status": "exercised",
+      "evidence": [
+        "artifacts/phase5/game-before-movement.png",
+        "artifacts/phase5/game-after-movement.png"
+      ],
+      "scope": "Brief character movement; intense combat was not exercised."
+    },
+    "devtools_layout": {
+      "status": "observed_and_original_layout_restored",
+      "source_capture_dimensions": "1920x1040",
+      "right_to_bottom_result": "Mobile viewport moved and its lower edge was clipped while captured texture dimensions stayed unchanged.",
+      "required_action": "Confirm the whole viewport remains visible and recalibrate after internal DevTools layout changes."
+    },
+    "browser_scheduling": {
+      "capture": {
+        "samples": 1721,
+        "elapsed_ms": 10002.5,
+        "fps": 171.95701074731318,
+        "median_ms": 5.600000000093132,
+        "p95_ms": 5.800000000279397,
+        "maximum_ms": 16.600000000093132,
+        "scope": "browser_requestAnimationFrame_scheduling_not_game_engine_fps"
+      },
+      "baseline": {
+        "samples": 1746,
+        "elapsed_ms": 10002.900000000373,
+        "fps": 174.44940967118885,
+        "median_ms": 5.599999999627471,
+        "p95_ms": 5.7999999998137355,
+        "maximum_ms": 16.700000000186265,
+        "scope": "browser_requestAnimationFrame_scheduling_not_game_engine_fps"
+      },
+      "scope": "requestAnimationFrame scheduling; does not measure game-engine FPS or input latency."
+    },
+    "encoder": {
+      "used": "libx264",
+      "nvenc": "unavailable",
+      "reason": "Installed driver supports NVENC API 13.0; bundled FFmpeg requires 13.1."
+    }
+  },
+  "historical_recording_before_requirement_removed": {
+    "required_for_acceptance": false,
+    "initial_export": {
+      "status": "failed",
+      "report": "artifacts/phase5/soak-30min/report.json",
+      "reason": "Full frame verification exceeded the old fixed 30-second FFprobe deadline."
+    },
+    "recovery_after_fix": {
+      "status": "passed",
+      "report": "artifacts/phase5/soak-30min/recovery-validation.json",
+      "frames": 54001,
+      "duration_seconds": 1800.033333,
+      "full_decode": true,
+      "faststart": true,
+      "packet_timestamps": true,
+      "h264_payload_unchanged": true,
+      "original_mkv_preserved": true,
+      "memory": {
+        "samples": 342,
+        "slope_mib_per_minute": -0.06456020798106599,
+        "median_growth_mib": -0.03125,
+        "peak_private_mib": 92.77734375,
+        "passed": true
+      },
+      "packet_progress": {
+        "muxed_progress_ratio": 1.0011844313358138,
+        "buffered_packet_age_max_seconds": 10.538000000000238,
+        "packet_age_slope_seconds_per_minute": -0.026313379141704386,
+        "passed": true,
+        "scope": "Readable muxed-packet advancement; does not measure encoder processing latency."
+      },
+      "queue_overflows": null,
+      "source_frames_skipped": null
+    },
+    "repeat": {
+      "status": "cancelled_by_user",
+      "report": "artifacts/phase5/soak-30min-fixed/report.json",
+      "last_observed_seconds": 490.547,
+      "acceptance_result": "not_assessed_cancelled",
+      "export_verified": false
+    },
+    "passive_encoder_observation": {
+      "report": "artifacts/phase5/encoder-full-soak/report.json",
+      "memory": {
+        "samples": 74,
+        "slope_mib_per_minute": 0.09535005858575518,
+        "median_growth_mib": 0.375,
+        "peak_private_mib": 1128.671875,
+        "passed": true
+      },
+      "scope": "Memory observation ended when the cancelled recording process exited; does not validate export."
+    }
+  },
+  "limits": [
+    "Intense combat in the actual game was not exercised; deterministic high variation is additional controlled-source coverage.",
+    "Physical DPI 100/125/150 passed with a controlled source; game image fidelity at 125/150 still requires a smaller browser preview and recalibration.",
+    "Internal DevTools layout changes can invalidate the crop without changing the captured texture dimensions or DPI; manual inspection is required.",
+    "Browser requestAnimationFrame timing and buffered readable MKV packet age do not measure game-engine FPS or input latency.",
+    "NVENC was unavailable; all successful recordings used the real CPU fallback libx264.",
+    "60 FPS is not advertised as validated.",
+    "The cancelled repeat does not count as a successful recording/export; the 30-minute requirement was removed.",
+    "Large videos and screenshots remain local under ignored artifacts/build directories."
+  ],
+  "source_hash_method": "SHA-256 of source text with CRLF normalized to LF",
+  "source_sha256": {
+    "CMakeLists.txt": "a2c7c4452e770d6f86f8e92921ceeeac34d506e47917f0fb82c906864fbf04ac",
+    "CMakePresets.json": "da2b4779445668af79df947d54190482a90e44348d2fa6951dabca9524a5aef8",
+    "PLANO_DESENVOLVIMENTO.md": "64ecb9a370af5902d65a5dbcc366161a6b6e6c91dda5da25c81af4b5632d6764",
+    "cmake/Dependencies.cmake": "6c7277365837aaa8c49c8cc15456273782d8658b307ebbf7fdc6830886323661",
+    "scripts/check-ffmpeg.ps1": "2b189863fc49b5043c56290ba3ed881acb27b67c148b9f5aba1b4e536d4525e9",
+    "scripts/ffmpeg-functions.ps1": "6490bd42ec131f66ad98f568049d35d19e78f5e411468e3bcc0ffec50972c05f",
+    "scripts/setup-ffmpeg.ps1": "ffbeae90871f1ef161edee9e3998fbe613d360a8ead2cc84cf10c6a92482821b",
+    "src/application_controls.cpp": "7d73c8f6babca9ae11ce6305653074c49f040bb10179df966c795153e74d4ea9",
+    "src/application_controls.h": "1d5ef513291a36cd4c0b360dd9d1df7deeba5c42e2291c559c58fefe0a26fb26",
+    "src/calibration.cpp": "957d904e25370068b7dc95f178988dc2b9b9b5d12139f81534b9ded9d81ede54",
+    "src/calibration.h": "090643c8f53d367b96ec461fb4477747e4a8fcf62c620e4c4e4f2b1386ea5111",
+    "src/capture_core.cpp": "c1b1d556f5bd72cc023fd483f495328b9ff3e3cc1231b0578cb4fe127a64ee47",
+    "src/capture_core.h": "a30df101b655585cd21b263d922cc0d64cb6b5ca12cb9470a8b430d4332ee428",
+    "src/capture_preview.cpp": "513083ceee7d70ddd14bb0924a961ab4d165c6598d32713a2bf79219d42a0679",
+    "src/capture_preview.h": "b8129e6e0eda84d28904b97e4a2d5a70ac619427412b64e42a6ad3b42e346202",
+    "src/main.cpp": "313919d742241661e575ca8fadec30217ada239f0b0515c8b377c805c17fb36b",
+    "src/phase1_poc.cpp": "cb9978396c31abcebb358e03c09da26dd4bfd3b35a71a92622e2bf6dbee29c5e",
+    "src/phase3_record.cpp": "da34bf22a7149d05c62eff6c4cd6c4e3e634ef8e205d5e27eae697e71221ce9d",
+    "src/recorder.cpp": "f394b77e702f863052824ec8cba02f00e395498e0361ba63baf7ed297292d025",
+    "src/recorder.h": "4abf115cfb804409e53d2d6c67f1546e1b834b9f86667edc77280b33c5971645",
+    "src/recorder_core.cpp": "2544fb27199e72e43c883fa52421fdf866a33e7779b60015c4cb28d98b58d2df",
+    "src/recorder_core.h": "8be2a332d3650fc1ab9645c27e79b8454049d5d476e33684ebcc4c021be74336",
+    "tests/README.md": "b0bd2082443e732d5e15f8fd8810e864e66a1cdbcedd2938a3d026c786f5d45b",
+    "tests/application_controls_tests.cpp": "c49a669f0e2d8ff2315b354e370787495c37547bd4b974abb0439d5fd0b4f288",
+    "tests/calibration_tests.cpp": "f90db3eaad1aaf0ce7121a99848de8317624976aff67bc212364ac920061249f",
+    "tests/capture_core_tests.cpp": "d119ec73ba47b20341427fe6dde2c94de15db0c7ffc2c79f512d34cda2aceb58",
+    "tests/capture_fixture.cpp": "a559162b3995757382f703592f58c4995d9f9539e570084655e409a141f63ea9",
+    "tests/e2e_phase0.py": "8145116b5de420963ee283cb6b60c56e4ba123fcb1c839c50c5bc1822f610763",
+    "tests/e2e_phase1.py": "e159450669a34824bd9e41edf192a09fa9355999994606a433f7e32b2a802242",
+    "tests/e2e_phase2.py": "85e7b5437670f2ad844e2665e6c9c1d8d3537d0e9aa02d52c543cfe37fd14693",
+    "tests/e2e_phase3.py": "809b3b139dc8c40b9550f6b2ebf0808ddb74b68e52babbe61f96945be53e6e8e",
+    "tests/e2e_phase4.py": "ccd99135298441b7124b34e09b6c79fff41ccc82ce3d1b987668c5a914966454",
+    "tests/e2e_phase5.py": "d9f62016a7e8bfdfbf07f6585d16ef80832f151089e733bb59b0c2d2d589ec28",
+    "tests/e2e_phase5_browser.py": "9553c2af610e8374b6cc14da6774667c1ac85965060e1f4066f62868f6404bb1",
+    "tests/e2e_phase5_dpi.py": "86390af1596fe395866a80e59ded03159f662d3c1215ba78342651bef69f3536",
+    "tests/measure-browser-cadence.ps1": "c46cfd349092978bfa7b6a66c1a32ac1b8c2767f0daa1226477eb9db90cdd08f",
+    "tests/media_tool_fixture.cpp": "3a81310d64a763484a35fbb8d7fd8928b5de2cda974098e652ef285bd7013113",
+    "tests/observe_phase5_resources.py": "69e46aaf3c1d0abab1047a333a043fdae662e99ff2a2e7803a6d9666cabc5e68",
+    "tests/phase5_resources.py": "9083abc5a872502dcb5a3d095aec014e3d61c90e5679615c509f6da299964709",
+    "tests/phase5_validation.py": "8fc8cd6d12bda79686e66843ea35b557e4e35494f17fa30c82021a440de794ba",
+    "tests/phase5_validation_tests.py": "7138e7d885755de5b8b68782db4a74fceb15cd1cc0a6b07d17f131bb3c91a594",
+    "tests/recorder_lifecycle_e2e.cpp": "74d9cc6ea38efeccb89e2bcb0bf90fbeca3bb148014e134d1511588d502146cd",
+    "tests/recorder_tests.cpp": "75d8b1682cb1b28e795136a445988f8a42d3aae2b28f7d9003e188d71ba21273",
+    "tests/run-unit.ps1": "37294915e7c9b73b2236707167d6306645f20bb3f6a58cb7705cd80bbe7f08a2",
+    "tests/set-validation-display-scale.ps1": "3caefa309a6238693ca32bbda39ac14ea6c6f912a19be2a1b226bdd79640dd0b",
+    "tests/setup-ffmpeg.Tests.ps1": "73aed956f599f4277f54357bdb93a758d1cd9a27cebf68e643e6f52697888b09"
+  },
+  "artifact_report_sha256": {
+    "artifacts/phase5/browser-current-layout/report.json": "1044284300fc0e52751fbe33929e30d43ac880fdfa5420c1be65d81bf36d5a15",
+    "artifacts/phase5/physical-dpi-confirmed/report.json": "07edb0c22b25194dad48c6e6970288a5f78f155a2c02306e009e439cc45552fc",
+    "artifacts/phase5/soak-30min/recovery-validation.json": "96a57c3c912a1ca6d466b94516ea5901a6a376a0f9264f2394d25dbab76a9a07",
+    "artifacts/phase5/soak-30min/report.json": "a7e2df8be692e35537795661bfeae94b3da566eed3517713031861515b5227d4",
+    "artifacts/phase5/soak-30min-fixed/report.json": "f461ef6badf130d59ead2e4a98f573254b52dfdab97114ca4c1563f6424083b0",
+    "artifacts/phase5/encoder-full-soak/report.json": "f3f28eff049907f524d0ef3a792a73cdd635ec5e8fcfdf17135e4d32f49a1a69",
+    "build/vs2022-x64/test-results/Release/ctest.xml": "fd8f34c7bdcaa38b59f8c22db706ed8b3466e46fffb8ce15291f44354275a274",
+    "build/vs2022-x64/test-results/Debug/ctest.xml": "df98329e699176b47d3d6cc973126a44ff06c13516a99a77c2f470eb3aa9ac4c",
+    "build/vs2022-x64/test-results/Release/ctest-phase5-final.xml": "61681a6e1c2cc1e51e5e627a7c3308dec65c4e06ac9eb33fb32df5dba91ae9cd",
+    "build/vs2022-x64/test-results/Debug/ctest-phase5-final.xml": "727822e63491166c3742e19d138eae362a15fa1454ade46595c10f651ad91229"
+  }
+}

@@ -6,6 +6,7 @@ namespace {
 constexpr wchar_t kClass[] = L"YourotsCaptureE2EFixture";
 constexpr int kX = 57, kY = 50, kWidth = 486, kHeight = 864;
 bool animated = true;
+bool stress = false;
 unsigned tick{};
 
 void Fill(HDC dc, int x, int y, int width, int height, COLORREF color) {
@@ -36,6 +37,17 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpara
         HGDIOBJ previous = SelectObject(dc, bitmap);
         Fill(dc, 0, 0, client.right, client.bottom, RGB(255, 0, 255));
         Fill(dc, kX, kY, kWidth, kHeight, RGB(24, 24, 24));
+        if (stress && animated) {
+            // A busy, deterministic source exercises CPU encoding and bounded queues.
+            // Keep the four corners and white movement marker identical to the normal fixture.
+            for (int y = 64; y < kHeight - 64; y += 24) {
+                for (int x = 64; x < kWidth - 64; x += 24) {
+                    const unsigned value = tick * 29 + x * 17 + y * 31;
+                    Fill(dc, kX + x, kY + y, 24, 24,
+                         RGB(value % 200, (value * 3) % 200, (value * 7) % 200));
+                }
+            }
+        }
         Fill(dc, kX, kY, 32, 32, RGB(255, 0, 0));
         Fill(dc, kX + kWidth - 32, kY, 32, 32, RGB(0, 255, 0));
         Fill(dc, kX, kY + kHeight - 32, 32, 32, RGB(0, 0, 255));
@@ -63,6 +75,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpara
 int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR command, int) {
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
     animated = std::wstring_view(command).find(L"--static") == std::wstring_view::npos;
+    stress = std::wstring_view(command).find(L"--stress") != std::wstring_view::npos;
     WNDCLASSW window_class{};
     window_class.lpfnWndProc = WindowProc;
     window_class.hInstance = instance;
@@ -74,7 +87,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR command, int) {
     if (!hwnd) { return 2; }
     ShowWindow(hwnd, SW_SHOWNOACTIVATE);
     UpdateWindow(hwnd);
-    if (!SetTimer(hwnd, 1, 33, nullptr)) { DestroyWindow(hwnd); return 3; }
+    if (!SetTimer(hwnd, 1, stress ? 16 : 33, nullptr)) { DestroyWindow(hwnd); return 3; }
     MSG message{};
     while (GetMessageW(&message, nullptr, 0, 0) > 0) {
         TranslateMessage(&message);

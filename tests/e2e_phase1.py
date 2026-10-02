@@ -31,14 +31,14 @@ dwmapi = ctypes.WinDLL('dwmapi', use_last_error=True)
 
 
 class SourceWindow:
-    def __init__(self, fixture: Path, *, static: bool = False):
-        self.fixture, self.static = fixture, static
+    def __init__(self, fixture: Path, *, static: bool = False, stress: bool = False):
+        self.fixture, self.static, self.stress = fixture, static, stress
         self.process = None
         self.hwnd = None
 
     def __enter__(self):
         self.process = subprocess.Popen(
-            [str(self.fixture), *(['--static'] if self.static else [])],
+            [str(self.fixture), *(['--static'] if self.static else []), *(['--stress'] if self.stress else [])],
             creationflags=subprocess.CREATE_NO_WINDOW,
         )
         try:

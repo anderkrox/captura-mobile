@@ -41,6 +41,31 @@ std::string ProbeText(const std::map<std::string, std::string>& values, std::str
 
 int wmain(int argc, wchar_t** argv) {
     std::vector<Test> tests;
+    tests.push_back({"short_video_probe_keeps_a_bounded_budget", [] {
+        Require(MediaVerificationTimeoutMilliseconds(60, 30) == 32000);
+    }});
+    tests.push_back({"fractional_video_probe_rounds_up", [] {
+        Require(MediaVerificationTimeoutMilliseconds(1, 30) == 31000);
+    }});
+    tests.push_back({"thirty_minute_probe_allows_full_decode", [] {
+        Require(MediaVerificationTimeoutMilliseconds(54000, 30) > 30000);
+        Require(MediaVerificationTimeoutMilliseconds(54000, 30) == 600000);
+    }});
+    tests.push_back({"unknown_recovery_duration_has_a_finite_budget", [] {
+        Require(MediaVerificationTimeoutMilliseconds(0, 30) == 600000);
+    }});
+    tests.push_back({"probe_budget_caps_before_overflow", [] {
+        Require(MediaVerificationTimeoutMilliseconds(std::numeric_limits<std::uint64_t>::max(), 30) == 600000);
+    }});
+    tests.push_back({"probe_budget_cap_boundary", [] {
+        Require(MediaVerificationTimeoutMilliseconds(569 * 30, 30) == 599000);
+        Require(MediaVerificationTimeoutMilliseconds(570 * 30, 30) == 600000);
+    }});
+    tests.push_back({"probe_budget_rejects_invalid_frame_rates", [] {
+        for (int fps : {0, -1, 29, 60, INT_MAX}) {
+            Reject([&] { MediaVerificationTimeoutMilliseconds(60, fps); });
+        }
+    }});
     tests.push_back({"valid_settings_and_unicode_mp4", [] {
         for (auto cap : {1U, 4U, 32U}) { ValidateRecorderSettings(30, cap, L"pasta com ação 🎮/vídeo.MP4"); }
     }});

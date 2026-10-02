@@ -147,6 +147,7 @@ struct AppState {
     bool crop_set{};
     bool calibration_valid{};
     bool recording_source_minimized{};
+    bool capture_restarted_on_restore{};
     ULONGLONG restored_frame_since{};
     bool basis_invalidated{};
     bool saved_source_unique{};
@@ -540,6 +541,7 @@ void StopCapture(AppState& state) {
     state.crop_set = false;
     state.calibration_valid = false;
     state.recording_source_minimized = false;
+    state.capture_restarted_on_restore = false;
     state.restored_frame_since = 0;
     state.basis_invalidated = false;
     EnableWindow(state.save_button, FALSE);
@@ -760,6 +762,7 @@ void PollCapture(AppState& state) {
     const auto latest = state.capture->LatestFrame();
     if (state.recorder && IsIconic(state.source_info.hwnd)) {
         state.recording_source_minimized = true;
+        state.capture_restarted_on_restore = false;
         state.restored_frame_since = 0;
         state.calibration_valid = false;
         PauseRecording(state, true);
@@ -767,6 +770,23 @@ void PollCapture(AppState& state) {
         return;
     }
     if (state.recorder && state.recording_source_minimized) {
+        if (!state.capture_restarted_on_restore) {
+            // On Windows 10, Edge can leave an existing WGC pool stuck at an
+            // intermediate restore-animation size. Reopen the same capture object
+            // while Recorder is paused; its original dimensions/DPI stay mandatory.
+            state.capture_restarted_on_restore = true;
+            state.restored_frame_since = 0;
+            try {
+                state.capture->Stop();
+                state.capture->Start();
+                SetStatus(state, L"Atualizando a captura da fonte restaurada. Aguarde antes de retomar.");
+            } catch (const std::exception& error) {
+                SetStatus(state, L"Nao foi possivel restaurar a captura: " + Utf8ToWide(error.what()) +
+                    L". Finalize esta gravacao e selecione a fonte novamente.");
+            }
+            UpdateRecordingUi(state);
+            return;
+        }
         // WGC can deliver intermediate animation sizes when restoring a window.
         // Keep the calibrated frame until the original dimensions/DPI settle.
         state.calibration_valid = false;
@@ -775,9 +795,17 @@ void PollCapture(AppState& state) {
         if (!compatible) state.restored_frame_since = 0;
         else if (state.restored_frame_since == 0) state.restored_frame_since = GetTickCount64();
         if (!compatible || GetTickCount64() - state.restored_frame_since < 250) {
-            SetStatus(state, compatible
-                ? L"Aguardando um quadro estavel da fonte restaurada antes de retomar."
-                : L"Fonte restaurada com enquadramento diferente. Aguarde ou finalize e recalibre.");
+            if (compatible) {
+                SetStatus(state, L"Aguardando um quadro estavel da fonte restaurada antes de retomar.");
+            } else {
+                std::wstringstream message;
+                message << L"Fonte restaurada com enquadramento diferente: "
+                        << (latest ? latest->width : 0) << L"x" << (latest ? latest->height : 0)
+                        << L", DPI " << SourceDpi(state) << L"; esperado "
+                        << state.crop_frame_width << L"x" << state.crop_frame_height
+                        << L", DPI " << state.crop_dpi << L". Aguarde ou finalize e recalibre.";
+                SetStatus(state, message.str());
+            }
             UpdateRecordingUi(state);
             return;
         }

@@ -1,4 +1,4 @@
-# Testes das Fases 0, 1, 2, 3 e 4
+# Testes das Fases 0 a 5
 
 Os testes usam CTest, Python 3.10 ou superior e Pester 3.4.0, disponível neste
 computador pelo Windows PowerShell. Não é necessário baixar bibliotecas de
@@ -307,7 +307,104 @@ Os resultados ficam em `build/vs2022-x64/test-results/<configuração>/`:
 Cada processo externo tem prazo de execução. Falhas retornam código diferente
 de zero e são reportadas pelo CTest; arquivos de vídeo úteis são preservados.
 
-## Última execução
+## Fase 5: ambiente real e estabilidade
+
+`unit.phase5_validation` acrescenta 37 casos de aceitação: rejeição de áudio,
+resolução/proporção/FPS incorretos, duração acelerada ou truncada, valores não
+finitos, borda inferior perdida, memória que cresce e pacotes que param de
+avançar. O relatório JUnit é `phase5-validation.xml`.
+
+`e2e.phase5`, incluído no CTest, faz 12 gravações pela interface de produção:
+quatro estáticas, quatro com movimento e quatro com uma fonte Win32 com muitas
+animações a aproximadamente 60 Hz. Confere cantos, movimento, decodificação,
+MP4/H.264/1080 × 1920/30 FPS/BT.709, duração sem pausas, nomes distintos e
+recursos após ciclos no mesmo aplicativo. Com dois monitores na mesma escala,
+move a fonte entre eles e verifica a prévia e o recorte durante a gravação.
+As configurações permanecem isoladas; a fonte animada não representa combate
+real no jogo.
+
+```powershell
+ctest --preset release -R 'unit.phase5_validation|e2e.phase5'
+ctest --preset debug -R 'unit.phase5_validation|e2e.phase5'
+```
+
+Os testes abaixo são explícitos, porque usam o navegador aberto ou alteram
+temporariamente a escala física do primeiro monitor. Não são executados por
+`ctest`. A validação de estabilidade usa ciclos curtos; não há requisito de
+gravação contínua de 30 minutos. Para identificar o `HWND` atual e salvar a
+referência, use a POC; confirme visualmente o recorte antes da gravação:
+
+```powershell
+.\build\vs2022-x64\Release\YourotsCapturePoc.exe --list-windows
+# Exemplo: substitua o HWND e o recorte pelos valores conferidos na sua janela.
+$sourceHandle = 263732
+.\build\vs2022-x64\Release\YourotsCapturePoc.exe --hwnd $sourceHandle `
+  --crop '410,147,486,864' --snapshot artifacts/phase5/mobile-reference.png
+```
+
+Para observar um encoder já iniciado, obtenha seu PID com `Get-Process
+ffmpeg` e execute `observe_phase5_resources.py --pid <PID> --artifacts <pasta>`.
+O observador encerra quando esse processo termina e registra seu intervalo de
+observação; não inicia gravações. A análise de tendência exige dois minutos
+de aquecimento e pelo menos um minuto de amostras adicionais; intervalos
+menores são insuficientes para essa análise. Nos ciclos curtos, o E2E compara
+os recursos liberados ao final de cada sessão. A idade de pacotes legíveis em
+um MKV inclui buffers do [FFmpeg](https://ffmpeg.org/ffmpeg-formats.html#matroska)
+e não mede a latência do encoder. As medições de agendamento de
+`requestAnimationFrame` do navegador são separadas do FPS do motor do jogo:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/measure-browser-cadence.ps1 `
+  -WindowHandle $sourceHandle -Label capture -ReportPath artifacts/phase5/browser-cadence-capture.json
+```
+
+`e2e_phase5_dpi.py` usa a tela Configurações do Windows para testar 100%, 125%
+e 150% no primeiro monitor. Confere os DPI reais 96/120/144, captura e vídeos,
+mudanças entre monitores com DPI diferentes e a recalibração obrigatória,
+restaurando a escala original em `finally`. Usa uma fonte Win32 controlada.
+Exige o arranjo observado de dois monitores e o primeiro como principal.
+
+```powershell
+python tests/e2e_phase5_dpi.py --app build/vs2022-x64/Release/YourotsCapture.exe `
+  --fixture build/vs2022-x64/Release/CaptureFixture.exe `
+  --ffmpeg third_party/ffmpeg/bin/ffmpeg.exe --ffprobe third_party/ffmpeg/bin/ffprobe.exe `
+  --scale-helper tests/set-validation-display-scale.ps1 --artifacts artifacts/phase5/physical-dpi
+```
+
+`e2e_phase5_browser.py` testa pausas, movimentação, minimização/restauração e
+redimensionamento na janela do jogo. Restaura sua posição original. Para
+fechamento e recuperação, cria e fecha somente uma nova janela `about:blank`
+do Edge e recupera seu MKV com os binários reais:
+
+```powershell
+python tests/e2e_phase5_browser.py --app build/vs2022-x64/Release/YourotsCapture.exe `
+  --edge 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe' `
+  --ffmpeg third_party/ffmpeg/bin/ffmpeg.exe --ffprobe third_party/ffmpeg/bin/ffprobe.exe `
+  --hwnd $sourceHandle --crop '410,147,486,864' `
+  --reference artifacts/phase5/mobile-reference.png --artifacts artifacts/phase5/browser
+```
+
+Os artefatos grandes permanecem locais em `artifacts/phase5/` e
+`build/vs2022-x64/test-results/<configuração>/e2e-phase5/`. O resumo versionado
+e os limites reais de cobertura ficam em `docs/VALIDACAO_FASE5.json`.
+
+## Última execução da Fase 5
+
+Em 02/10/2026, os builds Release e Debug passaram nas 12 entradas CTest, com
+366 casos unitários e os E2E das Fases 0 a 5. O novo E2E aprovou 12 gravações
+curtas por configuração. No ambiente real, os seis grupos do navegador e as
+três escalas físicas de DPI passaram; a escala original foi restaurada.
+Foram corrigidos o timeout da verificação completa do FFprobe e a captura
+WGC após restaurar o Edge. Os testes não mantêm processos ativos ao terminar.
+
+A exigência de gravação contínua de 30 minutos foi removida a pedido do
+usuário. Os artefatos do ensaio inicial e de sua recuperação foram preservados
+como histórico; a repetição cancelada não conta como aprovação. Combate
+intenso no jogo e fidelidade do jogo em 125%/150% permanecem fora da cobertura
+confirmada. A matriz de DPI usa uma fonte controlada, e o encoder validado
+foi `libx264`, pois o driver disponível não passou no teste NVENC.
+
+## Última execução da Fase 4
 
 Em 01/10/2026 às 18:35 (America/Sao_Paulo), builds Release e Debug x64
 aprovados. A suíte completa passou com 10/10 entradas CTest em cada

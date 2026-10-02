@@ -300,7 +300,8 @@ double VerifyOutput(const fs::path& ffprobe, const fs::path& output,
          << L"-show_entries stream=codec_name,width,height,pix_fmt,r_frame_rate,avg_frame_rate,sample_aspect_ratio,"
             L"color_range,color_space,color_transfer,color_primaries,nb_read_frames -show_entries format=duration "
          << L"-of default=noprint_wrappers=1 " << QuoteCommandArgument(output.wstring());
-    const auto result = RunProcessCapture(ffprobe, args.str(), 30000);
+    const auto result = RunProcessCapture(
+        ffprobe, args.str(), detail::MediaVerificationTimeoutMilliseconds(frames, fps));
     if (result.exit_code != 0) {
         throw std::runtime_error("FFprobe falhou ao validar o MP4: " + result.output);
     }
@@ -322,7 +323,8 @@ std::uint64_t ProbeFrameCount(const fs::path& ffprobe, const fs::path& input) {
     args << L"-v error -count_frames -select_streams v:0 -show_entries stream=nb_read_frames "
             L"-of default=noprint_wrappers=1:nokey=1 "
          << QuoteCommandArgument(input.wstring());
-    const auto result = RunProcessCapture(ffprobe, args.str(), 30000);
+    const auto result = RunProcessCapture(
+        ffprobe, args.str(), detail::MediaVerificationTimeoutMilliseconds(0, 30));
     if (result.exit_code != 0) {
         throw std::runtime_error("FFprobe nao conseguiu ler a gravacao temporaria: " + result.output);
     }

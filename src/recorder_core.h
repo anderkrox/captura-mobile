@@ -20,6 +20,7 @@ std::wstring EncodingArguments(const std::filesystem::path& mkv, std::uint32_t w
 std::wstring RemuxArguments(const std::filesystem::path& mkv, const std::filesystem::path& mp4);
 double ValidateVideoProbe(std::string_view output, std::uint64_t frames, int fps);
 void ValidateAudioProbe(std::string_view output);
+std::uint32_t MediaVerificationTimeoutMilliseconds(std::uint64_t frames, int fps);
 std::uint64_t ParseRecoveryFrameCount(std::string_view output);
 void ValidateAvailableRecordingSpace(std::uintmax_t bytes, bool starting);
 

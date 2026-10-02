@@ -25,6 +25,12 @@ int wmain(int argc, wchar_t** argv) {
         if (argc != 6) { throw std::runtime_error("Expected HWND FFmpeg FFprobe output mode"); }
         SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
         winrt::init_apartment(winrt::apartment_type::multi_threaded);
+        if (std::wstring_view(argv[5]) == L"recover_file") {
+            const auto result = yourots::RecoverTemporaryRecording(argv[2], argv[3], argv[1], argv[4], 30);
+            std::cout << "recovery_verified=true\nframes=" << result.frames_written
+                      << "\nduration=" << result.duration_seconds << '\n';
+            return 0;
+        }
         const auto hwnd = reinterpret_cast<HWND>(static_cast<std::uintptr_t>(std::stoull(argv[1])));
         const fs::path output = argv[4]; const std::wstring mode = argv[5];
         auto capture = std::make_shared<yourots::WindowCapture>(hwnd);

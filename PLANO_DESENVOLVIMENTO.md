@@ -1,7 +1,7 @@
 # Plano de desenvolvimento — Captura Mobile do Yourots
 
 Data: 1 de outubro de 2026.
-Status: implementação iniciada; Fases 1, 2, 3 e 4 validadas tecnicamente em 01/10/2026.
+Status: Fases 1, 2, 3 e 4 validadas tecnicamente em 01/10/2026; testes automatizados e do navegador da Fase 5 aprovados em 02/10/2026, com limites de cobertura registrados abaixo.
 
 ## 1. Objetivo
 
@@ -118,8 +118,8 @@ O uso de NVENC acelera a codificação. Esse desenho inicial não pressupõe que
 - [x] Inspecionar navegador, sistema operacional, GPU e monitores.
 - [x] Confirmar a configuração Mobile de 486 × 864 e a opção sem áudio.
 - [x] Confirmar a disponibilidade das ferramentas C++ e CMake.
-- [ ] Liberar espaço vertical no navegador e verificar as quatro extremidades do Mobile a 100%.
-- [ ] Registrar uma imagem de referência da área completa.
+- [x] Liberar espaço vertical no navegador e verificar as quatro extremidades do Mobile a 100%.
+- [x] Registrar uma imagem de referência da área completa.
 - [x] Criar o projeto CMake x64 e definir Windows SDK e dependências.
 - [x] Selecionar versões de FFmpeg e FFprobe com suporte ao encoder escolhido.
 
@@ -368,22 +368,78 @@ Os comandos e limites de cobertura estão em [tests/README.md](tests/README.md).
 
 **Objetivo:** verificar fidelidade, estabilidade e impacto sobre o jogo.
 
-- [ ] Comparar imagem de referência e vídeo exportado nas quatro extremidades.
-- [ ] Conferir automaticamente resolução, proporção, taxa de quadros e ausência de áudio.
-- [ ] Testar cenas estáticas, deslocamento do personagem e animações intensas.
-- [ ] Testar pausa e retomada repetidas, conferindo a duração final.
-- [ ] Testar movimento da janela entre os dois monitores.
-- [ ] Testar escalas de 100%, 125% e 150%, conforme disponíveis, com calibração correspondente.
-- [ ] Testar redimensionamento da janela e mudanças na disposição do DevTools.
-- [ ] Testar minimização, restauração e fechamento do navegador.
-- [ ] Testar indisponibilidade de NVENC e a alternativa por CPU.
-- [ ] Fazer gravação contínua de 30 minutos e observar memória, atraso, quadros perdidos e impacto na fluidez do jogo.
-- [ ] Repetir ciclos de início e finalização para verificar liberação de recursos.
-- [ ] Verificar tentativa de recuperação de uma gravação temporária interrompida.
+- [x] Comparar imagem de referência e vídeo exportado nas quatro extremidades.
+- [x] Conferir automaticamente resolução, proporção, taxa de quadros e ausência de áudio.
+- [x] Testar cenas estáticas e deslocamento do personagem; exercitar alta variação visual com fonte controlada.
+- [ ] Conferir combate com animações intensas no jogo real.
+- [x] Testar pausa e retomada repetidas, conferindo a duração final.
+- [x] Testar movimento da janela entre os dois monitores.
+- [x] Testar escalas de 100%, 125% e 150%, conforme disponíveis, com calibração correspondente.
+- [x] Testar redimensionamento da janela e mudanças na disposição do DevTools.
+- [x] Testar minimização, restauração e fechamento do navegador.
+- [x] Testar indisponibilidade de NVENC e a alternativa por CPU.
+- [x] Observar memória e recursos em ciclos curtos de gravação, com metadados e duração conferidos; gravação contínua de 30 minutos excluída a pedido do usuário.
+- [x] Repetir ciclos de início e finalização para verificar liberação de recursos.
+- [x] Verificar tentativa de recuperação de uma gravação temporária interrompida.
+
+**Validação em 02/10/2026:** o enquadramento foi conferido no Edge aberto no
+jogo, com 486 × 864 CSS e prévia a 100%. A barra de favoritos foi ocultada para
+expor a borda inferior inteira. A referência inicial usa `410,147,486,864`;
+após restaurar o navegador, seu layout passou a usar `410,139,486,864`, que foi
+conferido novamente por imagem. As referências ficam em `artifacts/phase5/`.
+
+Foram acrescentados 37 unitários das verificações de aceitação e sete da
+regressão de timeout do FFprobe: são 366 casos unitários. A suíte possui 12
+entradas CTest, com 12 gravações pela interface no novo E2E, fontes estática,
+animada e de alta variação, pausas repetidas, cantos, metadados e recursos.
+Os testes do jogo passaram para pausa/retomada, movimento entre monitores,
+minimização/restauração e redimensionamento. O fechamento foi exercitado numa
+janela separada `about:blank` do Edge, com erro, MKV preservado e recuperação
+validada, mantendo a janela do jogo aberta.
+
+A escala física do primeiro monitor foi alterada pelas Configurações do
+Windows para 100%, 125% e 150%, com DPI reais 96, 120 e 144. Uma fonte Win32
+controlada validou prévia, vídeo e bloqueio de retomada ao atravessar monitores
+com DPI diferentes. A escala original foi restaurada. O viewport do jogo a
+100% de prévia não cabe inteiro na altura disponível em 125%/150%; sua
+fidelidade nessas escalas ainda exige prévia reduzida e nova calibração.
+
+Mudar o DevTools de direita para baixo deslocou o Mobile e cortou sua parte
+inferior, embora a textura continuasse em 1920 × 1040. Esse tipo de mudança
+interna não é detectado pela comparação de tamanho/DPI: exige conferir e
+recalibrar manualmente, com a fonte inteira visível. O layout da direita foi
+restaurado. Após redimensionar o Edge, finalize e reabra a fonte antes de
+confirmar a nova calibração.
+
+O primeiro ensaio gravou 30 minutos e encontrou o limite fixo de 30 segundos
+da verificação completa do FFprobe. O limite agora acompanha a duração e
+permanece limitado a dez minutos, inclusive para recuperação de duração
+desconhecida. O MKV original foi preservado e uma cópia foi recuperada pelo
+`Recorder` corrigido: 54.001 quadros, 1800,033333 s, H.264, 1080 × 1920,
+30 FPS, 9:16 e sem áudio. A decodificação integral, os timestamps, os cantos,
+`faststart` e os hashes dos pacotes H.264 passaram. A repetição foi interrompida
+a pedido do usuário e não conta como teste aprovado. A gravação contínua de
+30 minutos foi retirada dos critérios de aceite e do fluxo de testes; a
+validação de estabilidade usa ciclos curtos repetidos.
+
+A restauração do Edge também deixou um pool WGC antigo em 1922 × 1049, em
+vez de 1920 × 1040. A interface passou a reiniciar a mesma captura enquanto
+o gravador está pausado e a exigir quadro/DPI compatíveis e estáveis antes
+de habilitar a retomada. A calibração anterior não é liberada quando a base
+real mudou. Os testes do navegador e dos controles verificam esse fluxo.
+
+**Limites de aceite:** movimento do personagem foi exercitado no jogo, mas
+combate com animações intensas não foi exercitado durante a validação.
+A fonte Win32 de alta variação é cobertura técnica adicional.
+As medições de `requestAnimationFrame` descrevem o agendamento do navegador,
+sem medir FPS do motor do jogo ou latência de entrada. NVENC continua
+indisponível (API do driver 13.0; FFmpeg exige 13.1), e `libx264` foi usado.
+60 FPS não foi anunciado como validado. Comandos e artefatos:
+[tests/README.md](tests/README.md).
 
 **Entrega:** registros de validação, arquivos de exemplo e correções dos problemas encontrados.
 
-**Critério de conclusão:** todos os requisitos obrigatórios aprovados no computador do usuário, sem crescimento contínuo de memória ou atrasos progressivos. O preset de 60 FPS só será anunciado como disponível se passar pela validação correspondente.
+**Critério de conclusão:** requisitos aprovados no computador do usuário, com limites de cobertura registrados e sem crescimento de recursos nos ciclos curtos testados. O preset de 60 FPS só será anunciado como disponível se passar pela validação correspondente. O resumo versionado está em [VALIDACAO_FASE5.json](docs/VALIDACAO_FASE5.json).
 
 ### Fase 6 — Empacotamento e documentação
 
@@ -413,7 +469,7 @@ Os comandos e limites de cobertura estão em [tests/README.md](tests/README.md).
 - [ ] Permite iniciar, pausar, retomar e finalizar por botões e atalhos.
 - [ ] Preserva o enquadramento ao mover a janela.
 - [ ] Interrompe ou solicita recalibração diante de alterações detectadas que invalidem a região.
-- [ ] Conclui o teste contínuo de 30 minutos sem travamentos ou acúmulo progressivo de memória.
+- [x] Conclui ciclos curtos repetidos sem travamentos ou acúmulo progressivo de recursos.
 - [ ] Gera arquivos com nomes únicos e informa o resultado real da exportação.
 - [ ] Executa a partir da pasta distribuída no Windows x64 do usuário.
 

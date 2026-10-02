@@ -129,9 +129,9 @@ def verify_video(args, path, frames, seconds, *, moving):
         points = [x for x in range(40, 400) if min(frame[(432 * WIDTH + x) * 3:(432 * WIDTH + x) * 3 + 3]) > 220]
         require(len(points) >= 24, 'Marcador ausente.')
         centers.append(sum(points) / len(points))
-    if moving:
+    if moving is True:
         require(max(centers) - min(centers) > 8, 'Video congelado: movimento ausente.')
-    else:
+    elif moving is False:
         require(max(centers) - min(centers) <= 1, 'Cena estatica alterada.')
     path.with_suffix('.ffprobe.json').write_text(json.dumps(metadata, indent=2), encoding='utf-8')
     return {'frames': frames, 'duration_seconds': duration, 'marker_centers': centers,
@@ -303,6 +303,18 @@ def main():
             for kind in ('source_closed', 'source_resized'):
                 source_failure(args, env, kind)
                 passed(f'{kind}_stops_with_error_and_preserves_mkv')
+            preserved = args.artifacts / 'probe_fail.recording.mkv'
+            recover_input = args.artifacts / 'recovery-cli-input.mkv'
+            recover_input.write_bytes(preserved.read_bytes())
+            recover_output = args.artifacts / 'recovery-cli.mp4'
+            recover_output.unlink(missing_ok=True)
+            diag = execute(args, 'recovery-cli', [recover_input, args.ffmpeg, args.ffprobe,
+                recover_output, 'recover_file'], environment=env, executable=args.lifecycle)
+            require(diag.get('recovery_verified') == 'true' and not recover_input.exists(), 'Recovery was not validated.')
+            frames = int(diag['frames'])
+            verify_video(args, recover_output, frames, frames / 30 - .000001, moving=True)
+            require(preserved.is_file(), 'Recovery helper changed the preserved original.')
+            passed('production_recovery_helper_validates_and_preserves_original')
         report['process_tree_cleanup'] = 'Windows jobs closed for every recorder process'
         report['status'] = 'passed'
         print(f'E2E Fase 3 aprovado: {len(report["cases"])} grupos.', flush=True)
