@@ -8,6 +8,7 @@
 #include "capture_preview.h"
 #include "recorder.h"
 #include "application_controls.h"
+#include "ui_rendering.h"
 
 #include <winrt/Windows.Foundation.h>
 
@@ -85,6 +86,8 @@ using yourots::Calibration;
 using yourots::FitImageRect;
 using yourots::RatioRectFromDrag;
 using yourots::LoadCalibration;
+using yourots::SetWindowTextIfChanged;
+using yourots::SetWindowEnabledIfChanged;
 
 struct AppState {
     HINSTANCE instance{};
@@ -143,6 +146,7 @@ struct AppState {
 
     RECT preview_rect{};
     RECT image_rect{};
+    yourots::PaintBuffer paint_buffer;
     yourots::CropRect crop{};
     bool crop_set{};
     bool calibration_valid{};
@@ -287,34 +291,34 @@ void UpdateRecordingUi(AppState& state) {
         !state.failed_temporary.empty() && fs::is_regular_file(state.failed_temporary));
     const bool session_busy = controls.busy;
 
-    SetWindowTextW(state.recording_state_text,
-        (L"Estado: " + RecordingStateName(state.recording_state)).c_str());
+    SetWindowTextIfChanged(state.recording_state_text,
+        L"Estado: " + RecordingStateName(state.recording_state));
     const double duration = state.recorder ? state.recorder->RecordedDurationSeconds() : state.last_duration_seconds;
-    SetWindowTextW(state.recording_duration_text,
-        (L"Tempo gravado: " + FormatDuration(duration)).c_str());
-    SetWindowTextW(state.output_folder_text,
-        (L"Destino: " + state.output_folder.wstring()).c_str());
+    SetWindowTextIfChanged(state.recording_duration_text,
+        L"Tempo gravado: " + FormatDuration(duration));
+    SetWindowTextIfChanged(state.output_folder_text,
+        L"Destino: " + state.output_folder.wstring());
 
-    EnableWindow(state.start_recording_button, controls.start);
-    EnableWindow(state.pause_recording_button, controls.pause);
-    EnableWindow(state.resume_recording_button, controls.resume);
-    EnableWindow(state.stop_recording_button, controls.stop);
-    EnableWindow(state.recover_button,
+    SetWindowEnabledIfChanged(state.start_recording_button, controls.start);
+    SetWindowEnabledIfChanged(state.pause_recording_button, controls.pause);
+    SetWindowEnabledIfChanged(state.resume_recording_button, controls.resume);
+    SetWindowEnabledIfChanged(state.stop_recording_button, controls.stop);
+    SetWindowEnabledIfChanged(state.recover_button,
         controls.recover);
-    EnableWindow(state.choose_folder_button, !session_busy);
-    EnableWindow(state.apply_hotkeys_button, controls.apply_hotkeys);
-    EnableWindow(state.source_combo, !session_busy);
-    EnableWindow(state.refresh_button, !session_busy);
-    EnableWindow(state.capture_button, !session_busy);
-    EnableWindow(state.apply_button, !session_busy);
-    EnableWindow(state.left_button, !session_busy);
-    EnableWindow(state.right_button, !session_busy);
-    EnableWindow(state.up_button, !session_busy);
-    EnableWindow(state.down_button, !session_busy);
-    EnableWindow(state.smaller_button, !session_busy);
-    EnableWindow(state.larger_button, !session_busy);
-    EnableWindow(state.reference_button, !session_busy);
-    EnableWindow(state.save_button, !session_busy && state.calibration_valid);
+    SetWindowEnabledIfChanged(state.choose_folder_button, !session_busy);
+    SetWindowEnabledIfChanged(state.apply_hotkeys_button, controls.apply_hotkeys);
+    SetWindowEnabledIfChanged(state.source_combo, !session_busy);
+    SetWindowEnabledIfChanged(state.refresh_button, !session_busy);
+    SetWindowEnabledIfChanged(state.capture_button, !session_busy);
+    SetWindowEnabledIfChanged(state.apply_button, !session_busy);
+    SetWindowEnabledIfChanged(state.left_button, !session_busy);
+    SetWindowEnabledIfChanged(state.right_button, !session_busy);
+    SetWindowEnabledIfChanged(state.up_button, !session_busy);
+    SetWindowEnabledIfChanged(state.down_button, !session_busy);
+    SetWindowEnabledIfChanged(state.smaller_button, !session_busy);
+    SetWindowEnabledIfChanged(state.larger_button, !session_busy);
+    SetWindowEnabledIfChanged(state.reference_button, !session_busy);
+    SetWindowEnabledIfChanged(state.save_button, !session_busy && state.calibration_valid);
 }
 
 void ApplyHotkeysFromControls(AppState& state) {
@@ -410,20 +414,17 @@ UINT SourceDpi(const AppState& state) {
     return GetDpiForWindow(state.source_info.hwnd);
 }
 
-void ValidateCalibrationState(AppState& state) {
+std::wstring ValidateCalibrationState(AppState& state) {
     state.calibration_valid = false;
-    if (!state.frame) { return; }
+    if (!state.frame) { return state.last_status; }
     if (!state.crop_set) {
-        SetStatus(state, L"Arraste sobre a previa para selecionar a area Mobile em 9:16.");
-        return;
+        return L"Arraste sobre a previa para selecionar a area Mobile em 9:16.";
     }
     if (!IsWindow(state.source_info.hwnd) || IsIconic(state.source_info.hwnd)) {
-        SetStatus(state, L"A fonte esta indisponivel ou minimizada. Restaure a janela para validar.");
-        return;
+        return L"A fonte esta indisponivel ou minimizada. Restaure a janela para validar.";
     }
     if (state.recorder && state.recording_source_minimized) {
-        SetStatus(state, L"Aguardando um quadro estavel da fonte restaurada antes de retomar.");
-        return;
+        return L"Aguardando um quadro estavel da fonte restaurada antes de retomar.";
     }
     const UINT dpi = SourceDpi(state);
     const Calibration basis{true, {}, {}, {}, state.crop_frame_width, state.crop_frame_height, state.crop_dpi, state.crop};
@@ -434,41 +435,37 @@ void ValidateCalibrationState(AppState& state) {
         message << L"Recalibracao necessaria: o quadro mudou de "
                 << state.crop_frame_width << L"x" << state.crop_frame_height << L" para "
                 << state.frame->width << L"x" << state.frame->height << L".";
-        SetStatus(state, message.str());
-        return;
+        return message.str();
     }
     if (check == yourots::CalibrationCheck::DpiChanged) {
         state.basis_invalidated = true;
         std::wstringstream message;
         message << L"Recalibracao necessaria: o DPI da fonte mudou de " << state.crop_dpi << L" para " << dpi << L".";
-        SetStatus(state, message.str());
-        return;
+        return message.str();
     }
     if (check == yourots::CalibrationCheck::OutsideFrame || check == yourots::CalibrationCheck::EmptyFrame) {
-        SetStatus(state, L"Recalibracao necessaria: a regiao ficou fora do quadro capturado.");
-        return;
+        return L"Recalibracao necessaria: a regiao ficou fora do quadro capturado.";
     }
     if (check == yourots::CalibrationCheck::InvalidRatio) {
-        SetStatus(state, L"Recalibracao necessaria: a regiao precisa manter proporcao 9:16.");
-        return;
+        return L"Recalibracao necessaria: a regiao precisa manter proporcao 9:16.";
     }
     if (state.basis_invalidated) {
-        SetStatus(state, L"Recalibracao necessaria: confirme novamente a regiao apos a alteracao da fonte.");
-        return;
+        return L"Recalibracao necessaria: confirme novamente a regiao apos a alteracao da fonte.";
     }
     state.calibration_valid = true;
     std::wstringstream message;
     message << L"Calibracao valida - " << state.frame->width << L"x" << state.frame->height
             << L" fisicos, DPI " << dpi << L". Mover a janela preserva o recorte.";
-    SetStatus(state, message.str());
+    return message.str();
 }
 
 void ValidateCalibration(AppState& state, bool announce = true) {
-    const auto previous_status = state.last_status;
     const bool was_valid = state.calibration_valid;
-    ValidateCalibrationState(state);
-    if (!announce && ((was_valid && state.calibration_valid) || state.recording_state == RecordingState::Error)) {
-        SetStatus(state, previous_status);
+    const auto status = ValidateCalibrationState(state);
+    // Decide before changing the STATIC control: setting then restoring the
+    // recording status repaints it twice on every capture tick.
+    if (announce || (!(was_valid && state.calibration_valid) && state.recording_state != RecordingState::Error)) {
+        SetStatus(state, status);
     }
     if (state.recording_state_text) UpdateRecordingUi(state);
 }
@@ -1128,6 +1125,15 @@ void PaintPreview(AppState& state, HDC dc) {
     }
 }
 
+void PaintWindow(AppState& state, HDC dc) {
+    RECT client{};
+    if (!GetClientRect(state.hwnd, &client)) return;
+    state.paint_buffer.Paint(dc, client, [&](HDC buffer) {
+        FillRect(buffer, &client, GetSysColorBrush(COLOR_WINDOW));
+        PaintPreview(state, buffer);
+    });
+}
+
 void HandleCommand(AppState& state, int id) {
     switch (id) {
     case kRefreshButton:
@@ -1347,15 +1353,18 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT message, WPARAM wparam, LPARAM lpara
             return 0;
         }
         break;
+    case WM_ERASEBKGND:
+        // PaintWindow includes the background in the completed frame.
+        return 1;
     case WM_PAINT: {
         PAINTSTRUCT paint{};
         HDC dc = BeginPaint(hwnd, &paint);
-        PaintPreview(*state, dc);
+        PaintWindow(*state, dc);
         EndPaint(hwnd, &paint);
         return 0;
     }
     case WM_PRINTCLIENT:
-        PaintPreview(*state, reinterpret_cast<HDC>(wparam));
+        PaintWindow(*state, reinterpret_cast<HDC>(wparam));
         return 0;
     case WM_CLOSE:
         if (state->recorder) {
@@ -1406,7 +1415,6 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show_command) {
     window_class.lpfnWndProc = WindowProc;
     window_class.hInstance = instance;
     window_class.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-    window_class.hbrBackground = reinterpret_cast<HBRUSH>(COLOR_WINDOW + 1);
     window_class.lpszClassName = kWindowClass;
     if (RegisterClassExW(&window_class) == 0) {
         return static_cast<int>(GetLastError());
@@ -1418,7 +1426,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR, int show_command) {
         0,
         kWindowClass,
         kWindowTitle,
-        WS_OVERLAPPEDWINDOW,
+        WS_OVERLAPPEDWINDOW | WS_CLIPCHILDREN,
         CW_USEDEFAULT,
         CW_USEDEFAULT,
         1400,

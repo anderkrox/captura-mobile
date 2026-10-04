@@ -48,6 +48,14 @@ target_compile_options(ApplicationControls PRIVATE
     $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive- /EHsc /utf-8>
 )
 
+add_library(UiRendering STATIC src/ui_rendering.cpp)
+target_include_directories(UiRendering PUBLIC src)
+target_compile_definitions(UiRendering PUBLIC UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
+target_compile_options(UiRendering PRIVATE
+    $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive- /EHsc /utf-8>
+)
+target_link_libraries(UiRendering PUBLIC gdi32 user32)
+
 add_executable(YourotsCapture WIN32
     src/main.cpp
     src/capture_preview.cpp
@@ -113,6 +121,7 @@ target_compile_options(YourotsCapturePhase3 PRIVATE
 
 target_link_libraries(YourotsCapture PRIVATE
     ApplicationControls
+    UiRendering
     Recorder
     Calibration
     gdi32
@@ -199,6 +208,16 @@ if(BUILD_TESTING)
         COMMAND ApplicationControlsTests "${CMAKE_CURRENT_BINARY_DIR}/test-results/$<CONFIG>/application-controls.xml"
     )
     set_tests_properties(unit.application_controls PROPERTIES LABELS unit TIMEOUT 20)
+
+    add_executable(UiRenderingTests tests/ui_rendering_tests.cpp)
+    target_compile_options(UiRenderingTests PRIVATE
+        $<$<CXX_COMPILER_ID:MSVC>:/W4 /permissive- /EHsc /utf-8>
+    )
+    target_link_libraries(UiRenderingTests PRIVATE UiRendering)
+    add_test(NAME unit.ui_rendering
+        COMMAND UiRenderingTests "${CMAKE_CURRENT_BINARY_DIR}/test-results/$<CONFIG>/ui-rendering.xml"
+    )
+    set_tests_properties(unit.ui_rendering PROPERTIES LABELS unit TIMEOUT 20)
 
     add_executable(RecorderLifecycleE2E tests/recorder_lifecycle_e2e.cpp src/capture_preview.cpp)
     target_compile_options(RecorderLifecycleE2E PRIVATE

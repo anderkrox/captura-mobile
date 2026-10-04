@@ -108,6 +108,19 @@ extraídas para `ApplicationControls` e sobre as verificações de recuperação
 `ApplicationControlsTests` não usa GPU nem processos externos. O relatório
 JUnit fica em `application-controls.xml`.
 
+`ui_rendering_tests.cpp` contém 27 casos sobre a correção das piscadas da interface:
+
+- Composição em memória sem apagar ou expor quadros parciais na tela.
+- Apresentação conjunta do fundo, imagem e contorno, sem resíduos do quadro anterior.
+- Coordenadas, regiões de atualização, reutilização e redimensionamento do bitmap.
+- Restauração do estado do DC, pintura interrompida, limites e liberação de recursos GDI.
+- Contagem real de mensagens `WM_SETTEXT` e `WM_ENABLE`: atualizações repetidas
+  não repintam controles, mas mudanças de texto, duração e habilitação são aplicadas.
+- Textos vazios, Unicode, textos longos, alterações externas e controles inválidos.
+
+`UiRenderingTests` usa bitmaps em memória e controles Win32 ocultos, sem GPU,
+captura ou FFmpeg. O relatório JUnit fica em `ui-rendering.xml`.
+
 ## E2E da Fase 0
 
 `e2e_phase0.py` executa um cenário com os binários reais:
@@ -167,6 +180,8 @@ Os E2E são serializados pelo CTest para não disputar a área de trabalho.
 Win32 e captura `CaptureFixture` por Windows.Graphics.Capture / Direct3D 11.
 O teste salva screenshots BMP da interface e compara os quatro cantos
 coloridos da prévia, antes e depois de mover a fonte e restaurar a calibração.
+Antes de cada screenshot, verifica que `WM_ERASEBKGND` mantém o bitmap intacto,
+para evitar a regressão que apagava o quadro antes de a pintura estar pronta.
 
 São 19 grupos de cenários: inicialização e DPI por monitor; seleção e prévia;
 recorte físico explícito; entradas inválidas; ajustes de posição/tamanho;

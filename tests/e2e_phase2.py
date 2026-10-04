@@ -48,6 +48,10 @@ gdi32.GetDIBits.argtypes = (wintypes.HDC, wintypes.HBITMAP, wintypes.UINT, winty
     ctypes.c_void_p, ctypes.c_void_p, wintypes.UINT)
 gdi32.DeleteObject.argtypes = (wintypes.HANDLE,)
 gdi32.DeleteDC.argtypes = (wintypes.HDC,)
+gdi32.SetPixel.argtypes = (wintypes.HDC, ctypes.c_int, ctypes.c_int, wintypes.DWORD)
+gdi32.SetPixel.restype = wintypes.DWORD
+gdi32.GetPixel.argtypes = (wintypes.HDC, ctypes.c_int, ctypes.c_int)
+gdi32.GetPixel.restype = wintypes.DWORD
 
 SOURCE, REFRESH, OPEN, STATUS, CROP = 100, 101, 102, 103, 104
 EDITS = (105, 106, 107, 108)
@@ -213,8 +217,13 @@ class Application:
             bitmap = gdi32.CreateCompatibleBitmap(dc, width, height)
             require(bitmap, 'CreateCompatibleBitmap falhou.')
             previous = gdi32.SelectObject(memory, bitmap)
-            # Ask the UI thread to paint a complete snapshot into our bitmap.
-            # Reading the screen DC can catch the preview between FillRect/StretchDIBits.
+            # Background erasure must leave the previous frame intact until WM_PAINT.
+            sentinel = 0x00EE0B7F
+            require(gdi32.SetPixel(memory, 0, 0, sentinel) == sentinel, 'SetPixel falhou.')
+            require(send(self.hwnd, 0x0014, memory) == 1, 'WM_ERASEBKGND nao foi tratado.')
+            require(gdi32.GetPixel(memory, 0, 0) == sentinel,
+                    'WM_ERASEBKGND apagou o quadro antes da pintura completa.')
+            # Ask the UI thread for a complete snapshot, including occluded windows.
             require(user32.PrintWindow(self.hwnd, memory, 1), 'PrintWindow falhou.')
             gdi32.SelectObject(memory, previous)
             previous = None
